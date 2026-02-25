@@ -110,7 +110,8 @@ If the task is `priority: "0"` or declares exclusive resources, do not run it in
 - Validate testing is easier.
 
 17. No transversal repo-wide changes without explicit approval.
-- Global renaming/style migrations/library swaps require a lightweight RFC and approval first.
+- Global renaming/style migrations/library swaps require a lightweight RFC (Architecture Decision Record - ADR).
+- **Mandatory**: If a task involves a transversal change, you must create a new ADR in the project's `docs/adr/` folder (using the internal `0000-template.md` as a guide) before implementation.
 
 18. Code standards are mandatory.
 - No magic strings for business rules.
