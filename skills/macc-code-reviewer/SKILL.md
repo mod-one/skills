@@ -107,7 +107,7 @@ Your output must be actionable: **must-fix**, **should-fix**, **nice-to-have**.
 - Errors categorized and consistent.
 - No silent failures; context/cause preserved.
 - Error codes stable and documented.
-- **Reference**: Use the skill's embedded `docs/ERRORS.md` as the source of truth for nomenclature and categories.
+- **Reference**: Consult the project's `docs/ERRORS.md`. If missing, use the skill's embedded `docs/ERRORS.md` as the source of truth for nomenclature and categories.
 
 ## Step 3 — Verify tests
 - New behavior has unit tests
