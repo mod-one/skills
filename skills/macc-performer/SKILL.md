@@ -61,8 +61,8 @@ If the task is `priority: "0"` or declares exclusive resources, do not run it in
 - Every error is categorized, contextualized, preserved, and observable.
 - Required categories: `Validation`, `Auth`, `Dependency`, `Conflict`, `NotFound`, `Internal`.
 - Required fields: `code`, `category`, `message`, `context`, `cause`.
-- Error codes must follow a stable nomenclature.
-- Update error documentation/catalog when introducing new codes.
+- Error codes must follow the `MACC-DOMAIN-0000` nomenclature defined in the project's `docs/ERRORS.md`.
+- **Mandatory**: If the project lacks a catalog, refer to this skill's internal `docs/ERRORS.md` to initialize the project's catalog or follow its standard. Update the catalog whenever introducing new codes.
 
 8. Performance policy.
 - Clarity first, then measure, then optimize locally.
@@ -156,7 +156,8 @@ Output template:
 ### Step 4 - Error integration
 - Ensure each failure path maps to the standard error model.
 - Ensure code/category/message/context/cause are preserved.
-- Update error catalog/docs and tests for new mappings.
+- **Reference**: Consult the project's `docs/ERRORS.md`. If missing, use the skill's embedded `docs/ERRORS.md` as the master standard for categories and nomenclature.
+- Update the project's error catalog/docs and add tests for new mappings.
 
 ### Step 5 - Testing
 - Add domain unit tests first.
