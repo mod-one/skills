@@ -153,6 +153,9 @@ Output template:
 - Keep domain independent from infra.
 - Implement infra adapters behind contracts.
 - Avoid broad utility abstractions.
+- If the task is already satisfied when you verify the repository state, do not force edits just to create a diff.
+- A task can succeed with zero file changes when acceptance criteria are already satisfied and you can prove it.
+- In that case, report the result explicitly as `already_satisfied` with the concrete checks performed.
 
 ### Step 4 - Error integration
 - Ensure each failure path maps to the standard error model.
