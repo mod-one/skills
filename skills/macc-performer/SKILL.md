@@ -1,20 +1,56 @@
 ---
 name: macc-performer
 description: >
-  Use this skill when an AI developer must implement exactly one development task from a PRD task list
-  (for example prd.json) in this repository, especially when several agents work in parallel. It enforces
-  domain-responsibility architecture, contracts-first implementation, strict and harmonized error handling,
-  deterministic testing, observability, CI discipline, and conflict-safe delivery. Do not use for PRD generation
-  or review-only tasks.
+  Use this skill when an AI developer must implement exactly one MACC PRD task inside one worktree.
+  It enforces MACC-native delivery: minimal blast radius, worktree-safe execution, contract-first changes,
+  anti-god-file discipline, proportional documentation, deterministic tests, existing error-model alignment,
+  observability, and commit metadata that stays compatible with coordinator reconciliation.
+  Do not use for PRD generation, planning-only tasks, or review-only tasks.
 ---
 
-# Performer Skill - PRD Task Implementer (Parallel Safe)
+# MACC Performer Skill - Single-Task Implementer
 
-Mission: implement one PRD task with minimal blast radius, stable contracts, and deployable quality.
+## Mission
 
-## Input Contract
+Implement exactly one PRD task in one worktree with minimal blast radius, stable contracts, and delivery that remains compatible with MACC coordinator, worktree reuse, logs, and commit reconciliation.
 
-Before writing code, identify all task fields from the selected PRD entry:
+Important execution boundary:
+- the AI performer implements the task and prepares delivery metadata;
+- the calling runner or script is responsible for staging, committing, and any git push/merge actions unless the repository explicitly delegates those actions to the agent.
+
+## Use This Skill When
+
+- one selected task must be implemented;
+- the repository is already initialized for MACC or uses MACC conventions;
+- the agent is acting as a performer, not as a planner, reviewer, or architect.
+
+## Do Not Use This Skill For
+
+- generating or restructuring `prd.json`;
+- review-only or audit-only passes;
+- broad repo-wide migrations unless the selected task explicitly requires them.
+
+## MACC Operating Context
+
+Treat these constraints as mandatory:
+
+- One performer run = one selected task = one worktree branch.
+- Work inside the current worktree context and respect its local task files.
+- Preserve compatibility with:
+  - `worktree.prd.json`
+  - `.macc/tool.json`
+  - `.macc/worktree.json` when present
+  - `.macc/log/`
+  - MACC coordinator commit parsing and `sync-prd`
+- Do not introduce side effects that break worktree reuse, task reconciliation, or log inspection.
+- Keep the diff local to the selected task unless the task explicitly requires a wider change.
+- Assume commit creation is external to the agent unless the caller explicitly says otherwise.
+
+## Task Input Handling
+
+Read the selected PRD entry and use every field that exists.
+
+Common fields may include:
 - `id`
 - `title`
 - `objective`
@@ -24,187 +60,241 @@ Before writing code, identify all task fields from the selected PRD entry:
 - `dependencies`
 - `exclusive_resources`
 - `priority`
+- `category`
+- `labels`
 
-If the task is `priority: "0"` or declares exclusive resources, do not run it in parallel with conflicting tasks.
+Do not fail just because some fields are missing.
+Infer only what is necessary, and state your assumptions explicitly in the final report.
 
-## Non-Negotiable Engineering Rules
+If the task declares `dependencies` or `exclusive_resources`, honor them.
+If the task is already satisfied, do not force a diff; report `already_satisfied` with the checks performed.
 
-1. Architecture by responsibility, not by technology.
-- Split by domain/use-case (`billing`, `auth`, `catalog`, etc.), not repo-wide technical layers.
-- Each module exposes a minimal public API and hides internals.
-- Document module invariants explicitly.
-- Domain core must not depend on infra; infra depends on domain.
+## Execution Mode
 
-2. Contracts before implementations.
-- Define ports/interfaces/types first.
-- Keep interfaces small, stable, and testable.
-- Forbid mega-interfaces.
+Choose the lightest mode that fits the task.
 
-3. No God files.
-- Split files by responsibility before they become large.
+### Micro task
+Use when the change is local, low-risk, and does not alter public contracts.
+Examples: bugfix in one module, focused test addition, small adapter correction.
 
-4. Coupling and cohesion.
-- One module = one clear idea.
-- Avoid generic cross-cutting `utils` dumping grounds.
-- Prefer local duplication over unclear global abstraction.
+Requirements:
+- no architecture detour;
+- no ADR;
+- minimal docs update only if behavior changed.
 
-5. DRY with judgment.
-- DRY applies to business knowledge and invariants first.
-- Factor only after repeated patterns and only if abstraction reduces complexity.
+### Standard task
+Use when the task changes behavior across a small module boundary or adds a new internal contract.
 
-6. Illegal states must be unrepresentable.
-- Use typed IDs/value objects/enums/validated constructors.
-- Avoid magic strings and ad-hoc nullable flows.
+Requirements:
+- short contract notes if public internal behavior changes;
+- targeted tests;
+- proportional observability updates.
 
-7. Strict and harmonized error model.
-- No silent catch-all.
-- Every error is categorized, contextualized, preserved, and observable.
-- Required categories: `Validation`, `Auth`, `Dependency`, `Conflict`, `NotFound`, `Internal`.
-- Required fields: `code`, `category`, `message`, `context`, `cause`.
-- Error codes must follow the `MACC-DOMAIN-0000` nomenclature defined in the project's `docs/ERRORS.md`.
-- **Mandatory**: If the project lacks a catalog, refer to this skill's internal `docs/ERRORS.md` to initialize the project's catalog or follow its standard. Update the catalog whenever introducing new codes.
+### Structural task
+Use only when the task explicitly changes shared contracts, orchestration rules, or cross-module architecture.
 
-8. Performance policy.
-- Clarity first, then measure, then optimize locally.
-- Optimize only with evidence (profiling or measured bottleneck).
+Requirements:
+- explicit migration thinking;
+- short ADR or architecture note;
+- stronger compatibility checks.
 
-9. Test policy.
-- Unit tests on domain invariants and edge cases first.
-- Targeted integration tests second.
-- Few critical E2E tests only.
-- Every bugfix adds a regression test.
-- Tests must be deterministic (mock time/network/randomness).
+## Non-Negotiable Rules
 
-10. Readability and consistency.
-- Enforce formatter and linter in CI.
-- Prefer domain naming over technical naming.
-- Keep functions focused and names explicit.
-- Large files/classes indicate architecture drift.
+### 1. Stay MACC-native
+- Respect worktree-scoped execution.
+- Preserve compatibility with coordinator orchestration and commit reconciliation.
+- Do not invent a parallel workflow that conflicts with MACC conventions.
 
-11. Internal API stability.
-- Any public internal API gets short contract docs and example usage.
-- Breaking changes require migration path and progressive deprecation when possible.
-- Keep API docs updated with each behavior or signature change.
+### 2. Keep scope minimal
+- Implement one task only.
+- Do not add opportunistic refactors outside the task unless they are required to deliver safely.
+- If you discover adjacent issues, report them instead of expanding scope silently.
 
-12. Observability from start.
-- Structured logs with correlation fields when available (`request_id`, `user_id`, `trace_id`).
-- Track latency and error metrics for critical flows.
-- Add tracing for distributed paths when relevant.
+### 3. Architecture by responsibility
+- Split by domain or use-case, not by vague technical dumping grounds.
+- One module should have one clear reason to change.
+- Prefer local explicit code over clever cross-cutting abstraction.
 
-13. CI/CD reliability.
-- PR must pass build, lint/format, tests, and baseline dependency security checks.
-- Default branch must remain deployable.
+### 4. Contracts before implementation
+- Define or adjust ports, DTOs, domain types, invariants, and boundaries before expanding behavior.
+- Keep interfaces small and stable.
+- Avoid mega-interfaces and broad helper surfaces.
 
-14. Debt management.
-- Use `TODO(owner, YYYY-MM-DD, reason): ...` only.
-- Track debt items explicitly and prefer small frequent refactors.
+### 5. Anti-god-file policy
+A file is at risk when one or more of these signals appear:
+- it mixes unrelated responsibilities;
+- it changes for unrelated PRD tasks;
+- it is difficult to test in isolation;
+- it is a recurring merge/conflict hotspot;
+- it keeps growing faster than neighboring files in the same module.
 
-15. Living minimal documentation.
-- Keep lightweight architecture notes, run/test instructions, conventions, and short ADRs close to code.
-- Update docs in the same PR when contracts/behavior change.
+Soft thresholds:
+- over 300 lines: re-evaluate responsibility boundaries;
+- over 500 lines: do not add new logic without an explicit split check;
+- over 800 lines: adding new logic is forbidden unless the file is a justified exception.
 
-16. Golden rule for each PR.
-- Validate the change reduces global complexity.
-- Validate coupling is controlled.
-- Validate invariants are clearer.
-- Validate testing is easier.
+Justified exceptions:
+- generated code;
+- declarative schemas or configuration;
+- thin composition roots;
+- index or re-export files.
 
-17. No transversal repo-wide changes without explicit approval.
-- Global renaming/style migrations/library swaps require a lightweight RFC (Architecture Decision Record - ADR).
-- **Mandatory**: If a task involves a transversal change, you must create a new ADR in the project's `docs/adr/` folder (using the internal `0000-template.md` as a guide) before implementation.
+When touching a dense file, choose one path:
+1. split first, then implement;
+2. extract the new logic into a nearby module;
+3. apply a minimal urgent patch and report a follow-up refactor need.
 
-18. Code standards are mandatory.
-- No magic strings for business rules.
-- No duplicated config constants without reason.
-- New modules must include minimal tests, structured errors, and short contract docs.
-- Any new abstraction must be justified by reduced complexity.
+Forbidden patterns:
+- appending unrelated helpers to a shared file;
+- extending a mixed-responsibility file instead of extracting;
+- creating generic `utils` or `helpers` dumping grounds to avoid proper modularization.
 
-19. Git hygiene.
-- Add non-committable artifacts to `.gitignore` (generated files, caches, local env files, temp outputs).
+### 6. Use the repository's existing error model
+- Never impose a new global error taxonomy if the repository already has one.
+- Reuse the existing module or subsystem error conventions first.
+- For MACC coordinator and runners, align with canonical classes and `E***` codes already used by the project.
+- For MACC Web API surfaces, align with the structured envelope and `MACC-WEB-XXXX` conventions already used by the project.
+- Preserve context, retryability semantics, and useful raw causes.
+- No silent catch-all and no swallowed failures.
 
-## Execution Workflow (Strict Order)
+### 7. Tests are part of the task
+- Add or update deterministic tests for changed behavior.
+- Every bugfix should include a regression test when practical.
+- Favor domain/unit tests first, then targeted integration tests.
+- Mock time, randomness, and network where needed.
 
-### Step 0 - Task framing from PRD
-- Restate objective in one sentence.
-- Define in-scope and out-of-scope from task `description`.
-- List touched domains/modules.
-- Identify conflict-prone files and resources.
-- Check task `dependencies` and `exclusive_resources` before coding.
+### 8. Observability from the start
+- Add or preserve structured logs on important flows.
+- Keep important failures diagnosable.
+- Do not break MACC log inspection expectations.
 
-Output template:
+### 9. Documentation must be proportional
+- Update nearby docs or contract notes when behavior or interfaces change.
+- Do not create architecture noise for a micro task.
+- Create a short ADR only when the task changes a shared contract, repo-wide policy, or architectural direction.
+
+### 10. No broad transversal changes by default
+- Repo-wide renames, formatting sweeps, library swaps, or mass refactors are out of scope unless explicitly requested by the task.
+- If such a change is necessary, keep it isolated, justified, and documented proportionally.
+
+### 11. Global complexity must go down, not up
+Before finishing, verify that:
+- coupling did not increase unnecessarily;
+- invariants are clearer, not more implicit;
+- testing is easier or at least not worse;
+- no new god file or hot-file hotspot was created without explicit justification.
+
+## Strict Workflow
+
+### Step 0 - Frame the selected task
+Produce this working summary before coding:
+
+- Task ID:
 - Objective:
+- Execution mode: `micro | standard | structural`
 - In scope:
 - Out of scope:
+- Available task fields:
 - Dependencies:
 - Exclusive resources:
 - Touched modules:
-- Hot/conflict areas:
+- Touched hot/conflict areas:
+- Dense file risk:
+- Assumptions:
 
-### Step 1 - Parallel-safe plan
-- Keep the change local to one domain.
-- If hot files are unavoidable, split into small contracts-first increments.
-- Use a feature flag when partial delivery is needed.
+Rules:
+- Restate the objective in one sentence.
+- Use the PRD entry as source of truth.
+- Identify whether any file touched is already a hot file or a god-file risk.
 
-### Step 2 - Define contracts
-- Define/update interfaces, DTOs, domain types, invariants, and error contract.
-- Write minimal contract-focused tests when relevant.
+### Step 1 - Verify MACC worktree context
+Before changing code, verify the local context used by the task when present:
+- `worktree.prd.json`
+- `.macc/tool.json`
+- `.macc/worktree.json`
+- relevant local task/config files
 
-### Step 3 - Implement
-- Keep domain independent from infra.
-- Implement infra adapters behind contracts.
-- Avoid broad utility abstractions.
-- If the task is already satisfied when you verify the repository state, do not force edits just to create a diff.
-- A task can succeed with zero file changes when acceptance criteria are already satisfied and you can prove it.
-- In that case, report the result explicitly as `already_satisfied` with the concrete checks performed.
+Do not rewrite them unless the task explicitly requires it.
 
-### Step 4 - Error integration
-- Ensure each failure path maps to the standard error model.
-- Ensure code/category/message/context/cause are preserved.
-- **Reference**: Consult the project's `docs/ERRORS.md`. If missing, use the skill's embedded `docs/ERRORS.md` as the master standard for categories and nomenclature.
-- Update the project's error catalog/docs and add tests for new mappings.
+### Step 2 - Make a parallel-safe implementation decision
+- Keep the change local to one domain or one small cluster of adjacent modules.
+- If a hot file is unavoidable, reduce blast radius first.
+- If a dense file must be touched, decide explicitly: split, extract, or minimal patch.
+- Avoid touching shared conflict-prone files unless necessary.
 
-### Step 5 - Testing
-- Add domain unit tests first.
-- Add targeted integration tests for DB/HTTP boundaries when needed.
-- Add regression tests for fixes.
-- Ensure determinism.
+### Step 3 - Define or refine contracts
+- Define or refine interfaces, DTOs, types, invariants, and boundaries first.
+- Keep behavior changes visible at the right seam.
+- Write minimal contract-focused tests when it reduces risk.
 
-### Step 6 - Observability
-- Add structured logs and key metrics for important flows.
-- Add tracing hooks for distributed or hard-to-debug paths.
+### Step 4 - Implement the task
+- Keep domain logic independent from infrastructure when relevant.
+- Prefer nearby modules over expanding central files.
+- Avoid broad abstractions that only save a few repeated lines.
+- If the repository state already satisfies the task, stop and report `already_satisfied`.
 
-### Step 7 - Hygiene and CI
-- Run formatter, linter, and tests.
-- Check `.gitignore` updates.
-- Ensure changed docs/contracts are synchronized.
+### Step 5 - Integrate with the existing error model
+- Map new failure paths to the existing subsystem conventions.
+- For coordinator and runner code, keep compatibility with canonical classes and `E***` semantics.
+- For web-facing API code, keep compatibility with the structured error envelope and `MACC-WEB-XXXX` semantics.
+- Preserve retryability and operator-action semantics when they already exist.
 
-### Step 8 - Pre-PR gate
-- Scope is minimal and aligned with one PRD task.
-- No God file introduced.
-- Contracts precede implementation.
-- Error model is harmonized and documented.
-- Tests are deterministic and sufficient.
-- CI-equivalent local checks pass.
-- Docs and ADR notes are updated if needed.
+### Step 6 - Test and observe
+- Run or update deterministic tests for the changed behavior.
+- Add regression coverage for bugfixes when practical.
+- Add or preserve useful logs, metrics, or tracing hooks where relevant.
 
-## Branch, Commit, PR
+### Step 7 - Update proportional docs
+- Update nearby docs, contract notes, examples, or module notes when needed.
+- Create a short ADR only if the task is structural or changes shared architecture/policy.
 
-Branching:
-- One PRD task = one branch.
-- Never commit directly to `main`.
-- Keep branch short-lived.
+### Step 8 - Hygiene and delivery checks
+Validate before handoff:
+- scope matches one task;
+- no accidental transversal repo-wide change;
+- no god file introduced or worsened without justification;
+- tests for changed behavior exist;
+- observability was preserved or improved;
+- changed docs and contracts are synchronized;
+- non-committable files are ignored;
+- worktree-specific MACC files were not broken;
 
-Commit style:
-- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`).
-- One commit should keep one clear intent.
+## Definition of Done
 
-PR checklist block:
-- PRD task ID:
-- What/Why:
-- Included scope:
-- Excluded scope:
-- How to test:
-- Risks:
-- Observability:
-- Error codes added/changed:
-- Docs/ADR updated:
+A task is done only if all are true:
+- the selected task objective is satisfied, or explicitly proven already satisfied;
+- the diff remains aligned with one task;
+- changed contracts are coherent;
+- changed behavior is tested proportionally;
+- existing MACC error conventions are respected;
+- MACC worktree and reconciliation expectations remain intact;
+- no unjustified god file growth was introduced;
+- the final report is complete.
+
+## Final Report Template
+
+Return a concise implementation report with:
+
+- Result: `done | already_satisfied | partial`
+- Task ID:
+- Objective:
+- Execution mode:
+- In scope delivered:
+- Out of scope left untouched:
+- Files changed:
+- Dense files touched:
+- Anti-god-file action taken: `split | extract | minimal patch | none`
+- Existing error model aligned with:
+- Tests added/updated:
+- Observability changes:
+- Docs updated:
+- ADR updated: `yes | no`
+- Risks or follow-up tasks:
+- Assumptions made:
+
+## Refusal / Escalation Conditions
+
+Stop and report instead of improvising when:
+- the task requires a repo-wide architectural change not described in scope;
+- the task would force breaking a shared contract without a migration path;
+- the only possible implementation would knowingly damage MACC orchestration, worktree reuse, logging.
