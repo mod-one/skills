@@ -1,162 +1,329 @@
 ---
-name: macc-code-reviewer
+name: macc-reviewer
 description: >
-  Use this skill whenever you (the AI reviewer) review a PR/branch/diff for this repository. It enforces the team's
-  development rules: domain-oriented architecture, contracts-first design, no God files, harmonized error taxonomy and
-  codes, test pyramid, observability, CI readiness, .gitignore hygiene, and parallel-safe merge discipline.
+  Use this skill when an AI reviewer audits one MACC task implementation inside one worktree.
+  It enforces MACC-native review: task-scoped analysis, worktree/context awareness,
+  anti-god-file discipline, existing error-model alignment, deterministic tests,
+  proportional documentation, observability, and parallel-safe delivery.
+  Do not use for planning-only work or for implementing code.
 ---
 
-# Code Reviewer — Parallel-Safe, Scalable Review Standard
+# MACC Reviewer Skill - Task-Scoped Change Review
 
 ## Mission
-Review code changes for correctness, clarity, maintainability, and parallel-safety.
-Your output must be actionable: **must-fix**, **should-fix**, **nice-to-have**.
 
----
+Review exactly one task implementation in one worktree.
+Your job is to determine whether the delivered change set is:
+- correct,
+- scoped to the selected task,
+- maintainable,
+- compatible with MACC orchestration,
+- safe for parallel execution and later integration.
 
-## Review Principles (Hard Rules)
+Your output must be actionable and evidence-based:
+- `must-fix` = blocking issue or contract violation;
+- `should-fix` = strong recommendation with meaningful risk;
+- `nice-to-have` = non-blocking improvement.
 
-### Architecture & Design
-1) **Domain/use-case structure**
-- Changes should reinforce domain boundaries
-- Avoid introducing layer-based sprawl (`controllers/services/utils` everywhere)
+## Use This Skill When
 
-2) **Contracts before implementations**
-- Interfaces/ports should be clear and minimal
-- Mega-interfaces are forbidden
-- Domain must not depend on infra
+- a MACC review phase is running for one selected task;
+- you must review a concrete change set, not invent new scope;
+- the repository uses MACC worktree/task conventions.
 
-3) **No God files and Illegal States**
-- Flag oversized files/functions and request splitting.
-- **Make illegal states unrepresentable**: Check for dedicated types/enums instead of magic strings or scattered validation.
-- “One module = one idea” should remain true.
+## Do Not Use This Skill For
 
-4) **Coupling, Cohesion and Internal APIs**
-- Avoid cross-domain helpers that create hidden dependency webs.
-- Avoid generic `utils/` dumping grounds.
-- Prefer local duplication over premature abstractions.
-- **Internal API Stability**: New public internal APIs must have short documentation, usage examples, and a stability/migration plan.
+- implementing code;
+- generating or restructuring `prd.json`;
+- architecture planning without a concrete reviewed change set;
+- repo-wide audits with no selected task.
 
-5) **DRY and The Golden Rule**
-- Abstraction must reduce complexity and clarify intent.
-- **The Golden Rule**: Every PR must be evaluated: does it reduce or increase global complexity? Does it make invariants clearer?
+## MACC Review Context
 
-### Errors, Tests, Observability
-6) **Harmonized error handling**
-- No silent catch-all.
-- Errors must be categorized:
-  `Validation`, `Auth`, `Dependency`, `Conflict`, `NotFound`, `Internal`
-- Errors must preserve cause/context and be observable.
-- If new error codes were introduced:
-  - Verify code format (Standard: `MACC-DOMAIN-0000`).
-  - **Mandatory**: verify the code is registered and unique in the project's `docs/ERRORS.md`.
-  - **Standard Reference**: If the project lacks a catalog, refer to this skill's internal `docs/ERRORS.md` to enforce the nomenclature and request the creation of a local catalog.
+Treat these constraints as mandatory:
 
-7) **Testing pyramid**
-- Domain unit tests for invariants and edge cases
-- Integration tests targeted
-- E2E few and critical only
-- Bugfix => regression test
-- Tests must be deterministic
+- One review run = one selected task = one worktree context.
+- Review against the selected task first, not against personal preferences.
+- Preserve compatibility with:
+  - `worktree.prd.json`
+  - `.macc/tool.json`
+  - `.macc/worktree.json` when present
+  - `.macc/log/`
+  - coordinator phase transitions
+  - `sync-prd` and reconciliation expectations
+- Focus on the current task change set. Do not require unrelated cleanup.
+- If a finding depends on another task, shared hot file, or exclusive resource, state it explicitly.
 
-8) **Observability**
-- Structured logs include `request_id`, `user_id`, `trace_id` when relevant
-- Metrics/tracing added for important flows
-- No important failure path without observability
+## Review Proportionality
 
-9) **Performance**
-- Optimization only after evidence/profiling
-- Watch for accidental O(n²), excessive allocations, or obvious hot-path regressions
+Judge the implementation with the lightest review mode that fits the task.
 
-### Repo Hygiene & Delivery
-10) **CI readiness and Debt**
-- Build/lint/tests must pass.
-- Formatting/lint conventions followed.
-- **Technical Debt**: Check for `TODO(owner, YYYY-MM-DD, reason)`. Reject anonymous or undated TODOs.
+### Micro review
+Use when the change is local, low-risk, and does not alter shared contracts.
 
-11) **`.gitignore` hygiene**
-- Non-source artifacts should not be committed
-- If PR adds generated/local files, request `.gitignore` update or removal
+Expect:
+- local correctness;
+- targeted tests;
+- no architecture ceremony;
+- minimal documentation changes only if behavior changed.
 
-12) **Parallel/merge discipline**
-- PR should be scoped to a single task
-- If PR touches hot files/shared schemas, ensure it’s justified and minimal
-- Conflicts must be resolved on the branch; never merge red
+### Standard review
+Use when the change crosses a small module boundary or adds/refines an internal contract.
 
-13) **No cross-cutting changes without RFC**
-- If PR introduces repo-wide refactors/migrations/renames:
-  - request RFC reference and approval proof
-  - otherwise mark as must-fix (split or revert)
+Expect:
+- clear contract boundaries;
+- targeted tests;
+- proportional observability;
+- nearby documentation or contract notes when behavior changed.
 
----
+### Structural review
+Use only when the task changes shared contracts, orchestration behavior, or cross-module architecture.
 
-# Review Workflow (Follow in order)
+Expect:
+- migration thinking;
+- stronger compatibility checks;
+- short architecture note or ADR when the repository already uses that practice.
 
-## Step 0 — Identify review target and risk
-- What is being changed? (modules/domains)
-- What is the PR intent?
-- Identify hot/conflict areas and cross-cutting risk
-- Classify change risk: Low / Medium / High
+Do not demand structural-process artifacts for a micro task.
 
-## Step 1 — Validate architecture boundaries
-- Domain purity: no infra types leaking into domain
-- Clear module boundaries and minimal public API
-- Contracts/ports present when needed
+## Non-Negotiable Review Rules
 
-## Step 2 — Verify error system compliance
-- Errors categorized and consistent.
-- No silent failures; context/cause preserved.
-- Error codes stable and documented.
-- **Reference**: Consult the project's `docs/ERRORS.md`. If missing, use the skill's embedded `docs/ERRORS.md` as the source of truth for nomenclature and categories.
+### 1. Review the selected task, not imagined scope
+- The reviewed change must stay aligned with one task objective.
+- Do not ask for opportunistic expansion outside the selected task.
+- If adjacent issues are real, place them in `should-fix` or `nice-to-have` unless they block this task directly.
 
-## Step 3 — Verify tests
-- New behavior has unit tests
-- Bugfix includes regression test
-- Tests deterministic
-- Integration/E2E used appropriately (not excessive)
+### 2. Stay MACC-native
+- Review the change in its worktree/task context.
+- Check that local MACC files and orchestration expectations were not broken accidentally.
+- Do not require a workflow that conflicts with MACC coordinator behavior.
 
-## Step 4 — Verify observability
-- Logs structured; key IDs included when relevant
-- Metrics/tracing added for important flows
-- Failure paths observable
+### 3. Architecture by responsibility
+- Prefer domain or use-case boundaries over vague technical dumping grounds.
+- One module should have one clear reason to change.
+- Flag hidden dependency webs and mixed-responsibility modules.
+- Prefer clear nearby code over clever cross-cutting abstractions.
 
-## Step 5 — Verify maintainability
-- No God files
-- Clear naming and small functions
-- No vague abstraction
-- No duplicated config patterns or magic strings
+### 4. Contracts before expanded behavior
+- Interfaces, DTOs, domain types, invariants, and boundaries should remain explicit.
+- Mega-interfaces and broad helper surfaces are review concerns.
+- Domain logic should not silently depend on infrastructure details when separation matters.
 
-## Step 6 — Verify delivery readiness
-- CI green (or instructions clearly provided)
-- `.gitignore` updated if needed
-- Docs/README/CHANGELOG updated if behavior/contracts changed
+### 5. Anti-god-file policy
+A file is at risk when one or more of these signals appear:
+- it mixes unrelated responsibilities;
+- it changes for unrelated tasks;
+- it is difficult to test in isolation;
+- it is a recurring conflict hotspot;
+- it keeps growing faster than neighboring files in the same module.
 
----
+Soft thresholds:
+- over 300 lines: re-evaluate responsibility boundaries;
+- over 500 lines: adding new logic requires an explicit split or extraction evaluation;
+- over 800 lines: adding new logic is normally unacceptable unless the file is a justified exception.
 
-# Review Output Format (Use this exact template)
+Justified exceptions:
+- generated code;
+- declarative schemas or configuration;
+- thin composition roots;
+- index or re-export files.
+
+When reviewing a dense file, check whether the implementer chose an acceptable path:
+1. split first;
+2. extract the new logic into a nearby module;
+3. apply a minimal urgent patch and clearly report follow-up refactor need.
+
+Flag these patterns:
+- unrelated helpers appended to a shared file;
+- new business logic added to an already mixed-responsibility file;
+- generic `utils` or `helpers` dumping grounds created to avoid proper modularization.
+
+### 6. Reuse the repository's existing error model
+- Never demand a new global error taxonomy if the repository already has one.
+- Review alignment with the existing module or subsystem conventions first.
+- For coordinator and runner code, verify alignment with canonical classes and `E***` semantics when relevant.
+- For web-facing API code, verify alignment with the structured envelope and `MACC-WEB-XXXX` semantics when relevant.
+- Preserve context, retryability semantics, and useful raw causes.
+- No silent catch-all and no swallowed failures.
+
+### 7. Tests are part of correctness
+- Changed behavior must be tested proportionally.
+- Every bugfix should include a regression test when practical.
+- Favor domain or unit tests first, then targeted integration tests.
+- Tests must be deterministic.
+- Time, randomness, and network dependencies should be controlled when relevant.
+
+### 8. Observability must not regress
+- Important failures must remain diagnosable.
+- Structured logs, metrics, or tracing should be preserved or improved where relevant.
+- MACC log inspection expectations must not be broken.
+
+### 9. Documentation must be proportional
+- Nearby docs, contract notes, examples, or module notes should be updated when behavior or interfaces changed.
+- Do not require architecture noise for a micro task.
+- A short architecture note or ADR is only expected for structural changes when the repository already uses that practice.
+
+### 10. No broad transversal changes by default
+- Repo-wide renames, formatting sweeps, library swaps, or mass refactors are out of scope unless the selected task clearly requires them.
+- If such a change appears, verify that it is isolated, justified, and documented proportionally.
+
+### 11. Global complexity must go down, not up
+Before approving, verify that:
+- coupling did not increase unnecessarily;
+- invariants are clearer, not more implicit;
+- testing is easier or at least not worse;
+- no new god file or hot-file hotspot was created without explicit justification.
+
+## Evidence Rules for Findings
+
+Every finding must state all of the following:
+- `where`: file, module, function, flow, or interface;
+- `impact`: what can break, confuse, or become costly;
+- `proof`: concrete observation, failing scenario, violated invariant, or missing protection;
+- `suggested fix`: the smallest correction that would resolve the issue.
+
+Do not label a stylistic preference as `must-fix`.
+
+Use this severity logic:
+- `must-fix` for incorrectness, broken invariants, unsafe behavior, contract mismatch, missing required test coverage for changed behavior, broken MACC compatibility, or unjustified structural risk;
+- `should-fix` for maintainability risk, weak boundaries, growing hotspot risk, or missing but non-blocking observability/documentation;
+- `nice-to-have` for polish, readability, or optional refinement.
+
+If you are uncertain, say so explicitly.
+Do not invent certainty.
+
+## Strict Review Workflow
+
+### Step 0 - Frame the review target
+Build this working summary before judging the change:
+
+- Task ID:
+- Objective:
+- Review mode: `micro | standard | structural`
+- In scope:
+- Out of scope:
+- Available task fields:
+- Dependencies:
+- Exclusive resources:
+- Touched modules:
+- Touched hot/conflict areas:
+- Dense file risk:
+- Assumptions:
+
+Rules:
+- Restate the task objective in one sentence.
+- Use the selected PRD entry as the source of truth.
+- Identify whether the review depends on local MACC context files.
+- Do not escalate scope before proving why.
+
+### Step 1 - Verify MACC worktree context
+When present, review against:
+- `worktree.prd.json`
+- `.macc/tool.json`
+- `.macc/worktree.json`
+- relevant local task/config files
+- relevant `.macc/log/` expectations when the change touches orchestration or observability
+
+Check that the implementation did not accidentally break task metadata, worktree-scoped assumptions, or review-phase expectations.
+
+### Step 2 - Verify task scope and architecture boundaries
+Check that:
+- the delivered change matches one task objective;
+- boundaries remain clear;
+- new behavior appears at the right seam;
+- shared hot files were touched only when justified;
+- dense files were split, extracted, or minimally patched with explicit reasoning.
+
+### Step 3 - Verify contracts and invariants
+Check that:
+- interfaces and types are coherent;
+- invalid states are not made easier to represent;
+- domain rules stay explicit;
+- new abstraction really reduces complexity;
+- public internal behavior, if changed, is understandable and proportionally documented.
+
+### Step 4 - Verify existing error-model alignment
+Check that:
+- new failure paths map to the existing subsystem conventions;
+- context and raw causes are preserved where useful;
+- retryability or operator-action semantics were not damaged;
+- web/API surfaces remain aligned with the structured error envelope when relevant;
+- coordinator and runner flows remain aligned with canonical classes and `E***` semantics when relevant.
+
+### Step 5 - Verify tests and determinism
+Check that:
+- changed behavior has proportional coverage;
+- bugfixes include regression protection when practical;
+- tests are deterministic;
+- expensive end-to-end coverage was not used where smaller tests would suffice.
+
+### Step 6 - Verify observability and diagnosability
+Check that:
+- important flows still emit useful diagnostics;
+- structured logs, metrics, or tracing were preserved or improved where relevant;
+- failure analysis remains practical for operators.
+
+### Step 7 - Verify delivery readiness
+Check that:
+- changed docs and contract notes stay synchronized;
+- local/generated artifacts are handled by the repository's ignore rules when relevant;
+- the change set remains focused and reviewable;
+- no accidental transversal repo-wide change slipped in.
+
+### Step 8 - Produce an evidence-based review result
+Return only findings that are grounded in the reviewed change.
+Distinguish blockers from preferences.
+State uncertainty explicitly when needed.
+
+## Review Output Template
+
+Use this exact structure:
 
 ## Summary
-- What the PR does:
-- Risk level (Low/Medium/High) + why:
+- Task reviewed:
+- What the change does:
+- Review mode: `micro | standard | structural`
+- Risk level: `low | medium | high`
+- Decision: `approve | changes_requested | blocked`
+- Why:
 
-## Must-fix (blocking)
-- [ ] Item 1 — what/where, why it violates rules, suggested fix
+## Must-fix
+- [ ] Item 1 — where / impact / proof / suggested fix
 - [ ] Item 2 — ...
 
-## Should-fix (strongly recommended)
-- [ ] Item 1 — ...
+## Should-fix
+- [ ] Item 1 — where / impact / proof / suggested fix
 - [ ] Item 2 — ...
 
 ## Nice-to-have
-- [ ] Item 1 — ...
+- [ ] Item 1 — where / impact / proof / suggested fix
 - [ ] Item 2 — ...
 
-## Testing & Verification Plan
-- Commands to run:
+## Verification Notes
+- Tests to run or re-run:
 - Edge cases to verify:
-- Observability checks (logs/metrics/traces):
+- Observability checks:
+- Context files checked:
 
-## Merge & Parallel Safety Notes
-- Hot files/exclusive resources touched:
-- Any dependency on other PRs/tasks:
-- Suggested merge order (if needed):
+## Parallel-Safety Notes
+- Hot/conflict areas touched:
+- Exclusive resources involved:
+- Dependencies on other tasks or phases:
+- Suggested integration order if relevant:
+
+## MACC Compatibility Notes
+- Worktree context preserved: `yes | no | unclear`
+- Existing error model aligned: `yes | no | unclear`
+- Dense file policy respected: `yes | no | unclear`
+- Proportional docs respected: `yes | no | unclear`
+- Follow-up task needed: `yes | no`
+
+## Reviewer Guardrails
+
+Reject your own review and rewrite it if:
+- you are requesting work that is outside the selected task without proving necessity;
+- you are imposing a new repository-wide standard not already justified by MACC or the existing subsystem;
+- you are calling a preference a blocker;
+- you are flagging a god file without explaining the responsibility problem or the acceptable extraction path;
+- you are criticizing missing artifacts that are disproportionate to a micro task;
+- you are making claims without a concrete `where` and `proof`.
