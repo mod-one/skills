@@ -405,11 +405,11 @@ Use this only as a reminder if the repository example is unavailable.
   "generated_at": "YYYY-MM-DD",
   "timezone": "Europe/Paris",
   "priority_mapping": {
-    "0": "P0 / Not parallel-safe",
+    "0": "P0 / This task should not be done in parallel with another!",
     "1": "P1 / Must-have",
     "2": "P2 / Should-have",
-    "4": "P3 / Nice-to-have or preparatory",
-    "5": "P4 / Lowest priority"
+    "3": "P3 / Nice-to-have or preparatory",
+    "4": "P4 / Lowest priority"
   },
   "routing_hints_mapping": {
     "execution_mode": "micro | standard | structural",
