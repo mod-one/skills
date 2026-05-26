@@ -105,6 +105,16 @@ Only create explicit error-model work when the lot truly changes error handling 
 Do not give every task the same delivery burden.
 Use the lightest planning mode that still protects quality.
 
+### 7. Documentation and tests are mandatory in every PRD
+Every PRD **must** include, at minimum:
+- at least one dedicated task for **documentation updates** (e.g. updating README, API docs, architecture notes, changelogs, or inline doc comments that are not trivially covered by code changes);
+- at least one dedicated task for **tests and verification** (e.g. unit tests, integration tests, end-to-end scenarios, regression checks, or manual verification steps when automated tests are absent).
+
+These tasks must be explicit, tracked, and never buried inside feature tasks.
+If the lot is genuinely trivial and documentation or tests truly do not apply, state the reason explicitly in `assumptions`.
+
+Do not skip these tasks silently.
+
 ### 7. Stable identity matters
 When updating an existing `prd.json`:
 - preserve task IDs whenever the task is still conceptually the same;
@@ -321,7 +331,8 @@ Prefer separating:
 - contracts, types, invariants;
 - implementation behind a contract;
 - adapter/integration changes;
-- docs or observability when they deserve separate tracking;
+- documentation updates (never merged silently into feature tasks);
+- tests and verification (unit, integration, regression, or manual verification);
 - structural extraction work from feature work when hotspots are involved.
 
 ### Step 3 - Add contracts-first tasks when useful
@@ -392,7 +403,9 @@ Before delivering `prd.json`, verify:
 - error handling expectations reuse the existing repository conventions;
 - delivery expectations are proportional to task type;
 - routing hints are present when allowed by the schema;
-- the JSON is valid and consistently formatted.
+- the JSON is valid and consistently formatted;
+- at least one documentation-update task is present (or an explicit assumption explains why it is omitted);
+- at least one test/verification task is present (or an explicit assumption explains why it is omitted).
 
 ## Minimal Reference Shape
 
