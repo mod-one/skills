@@ -413,10 +413,11 @@ Use this only as a reminder if the repository example is unavailable.
 
 ```json
 {
-  "lot": "Lot Name",
+  "project": "project name",
   "version": "1.0",
   "generated_at": "YYYY-MM-DD",
   "timezone": "Europe/Paris",
+  "language": "en",
   "priority_mapping": {
     "0": "P0 / This task should not be done in parallel with another!",
     "1": "P1 / Must-have",
