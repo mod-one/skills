@@ -431,7 +431,44 @@ Use this only as a reminder if the repository example is unavailable.
     "risk_level": "low | medium | high",
     "validation_profile": "light | standard | heavy"
   },
-  "assumptions": [],
+  "source_repositories": {
+    "cgui_engine": "https://github.com/ccc/ddd.git"
+  },
+  "resources": [
+    "docs/specifications/graphic_charter.md"
+  ],
+  "product_summary": "Short product summary for the lot file.",
+  "global_constraints": [
+    "Capture before organization: no metadata is mandatory for initial capture.",
+    "One thought equals one living card-node: conversions and moves preserve identity.",
+  ],
+  "integration_policy": {
+    "rule": "...",
+    "host_responsibilities": [
+      "Flutter rendering and design system",
+      "domain mutations and command execution"
+    ],
+    "responsibilities": [
+      "gravity runtime state",
+      "effect planning"
+    ]
+  },
+  "global_constraints": [
+    "Capture before organization: no metadata is mandatory for initial capture.",
+    "AI is intermediate, explainable, dismissible, and validated by the user."
+  ],
+  "lot": {
+    "id": "NOY-L9",
+    "name": "Lot Name",
+    "goal": "State the lot goal in one sentence.",
+    "assumptions": [
+      "State prerequisite assumptions here."
+    ],
+    "hot_zones": [
+      "prd/",
+      "scripts/"
+    ]
+  },
   "tasks": [
     {
       "id": "LOT-AREA-001",
@@ -440,11 +477,14 @@ Use this only as a reminder if the repository example is unavailable.
       "description": "Problem/Goal: ...\nKey actions: ...\nOut of scope: ...\nSuccess criteria: ...",
       "objective": "High-level goal",
       "result": "Expected result",
+      "labels": [
+        "macc",
+        "prd"
+      ],
       "steps": [
         "Step 1",
         "Step 2"
       ],
-      "notes": "Contextual notes",
       "exclusive_resources": [
         "path-or-module"
       ],
@@ -456,7 +496,13 @@ Use this only as a reminder if the repository example is unavailable.
         "context_scope": "module",
         "risk_level": "medium",
         "validation_profile": "standard"
-      }
+      },
+      "acceptance_criteria": [
+        "Example PRD files validate successfully.",
+        "All changed code is covered by proportional tests or documented validation.",
+        "The task does not reimplement CGUI core logic unless explicitly scoped as a host-side adapter."
+      ],
+      "notes": "Contextual notes"
     }
   ]
 }
