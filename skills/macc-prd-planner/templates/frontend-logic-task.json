@@ -1,0 +1,15 @@
+{
+  "id": "WEB-LOGIC-001",
+  "title": "Implement client-side data behavior",
+  "category": "frontend-logic",
+  "description": "Problem/Goal: ...\nKey actions: update non-visual client behavior.\nOut of scope: visual redesign.\nSuccess criteria: behavior is covered by targeted verification.",
+  "objective": "Deliver a non-visual frontend behavior change.",
+  "result": "Focused client logic and tests.",
+  "steps": ["Inspect existing client contracts.", "Implement the scoped behavior.", "Run focused tests."],
+  "exclusive_resources": [],
+  "dependencies": [],
+  "priority": "2",
+  "planning_profile": "frontend-logic",
+  "routing_hints": {"execution_mode": "micro", "reasoning_depth": "light", "context_scope": "local", "risk_level": "low", "validation_profile": "light"},
+  "acceptance_criteria": ["The specified client behavior is deterministic and tested."]
+}

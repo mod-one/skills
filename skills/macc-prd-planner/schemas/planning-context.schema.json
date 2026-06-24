@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC PRD planning context",
+  "type": "object",
+  "required": ["schema_version", "repository", "technology", "design_sources", "design_inventory", "reference_coverage", "hot_zones", "protected_paths", "warnings", "blocking_issues"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "repository": {"type": "object", "required": ["root"], "properties": {"root": {"type": "string"}, "prd_schema": {"type": ["string", "null"]}, "existing_prd": {"type": ["string", "null"]}}},
+    "technology": {"type": "object"},
+    "design_sources": {"type": "array"},
+    "design_inventory": {"type": "object"},
+    "reference_coverage": {"type": "object"},
+    "hot_zones": {"type": "array"},
+    "protected_paths": {"type": "array"},
+    "warnings": {"type": "array"},
+    "blocking_issues": {"type": "array"}
+  }
+}

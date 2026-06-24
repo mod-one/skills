@@ -1,0 +1,16 @@
+{
+  "id": "DS-001",
+  "title": "Extend the design system with a documented capability",
+  "category": "design-system",
+  "description": "Problem/Goal: add the explicitly missing system capability.\nKey actions: define API, migrate consumers, document, and verify.\nOut of scope: unrelated visual redesign.\nSuccess criteria: compatibility, stories/tests, migration impact, and docs are complete.",
+  "objective": "Deliver an intentional design-system extension or migration.",
+  "result": "A documented and verified system capability with downstream rollout plan.",
+  "steps": ["Document rationale and API.", "Implement with tests/stories.", "Validate migration impact and update docs."],
+  "exclusive_resources": ["web/src/design-system/"],
+  "dependencies": [],
+  "priority": "1",
+  "planning_profile": "design-system-change",
+  "routing_hints": {"execution_mode": "structural", "reasoning_depth": "deep", "context_scope": "cross-cutting", "risk_level": "high", "validation_profile": "heavy"},
+  "design_contract": {"fidelity_mode": "adaptive", "design_system_role": "extension", "sources": []},
+  "acceptance_criteria": ["The capability API, migration impact, tests/stories, and documentation are complete."]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC UI fidelity task extensions",
+  "type": "object",
+  "properties": {
+    "planning_profile": {"enum": ["ui-fidelity", "ui-exploration", "design-system-change", "ux-review"]},
+    "design_contract": {"type": "object", "required": ["fidelity_mode", "design_system_role", "sources"], "properties": {"fidelity_mode": {"enum": ["exact", "adaptive", "exploratory"]}, "design_system_role": {"enum": ["consumer", "extension", "migration", "none"]}, "sources": {"type": "array", "items": {"type": "object", "required": ["path", "type", "authority", "mutable"], "properties": {"path": {"type": "string"}, "type": {"type": "string"}, "authority": {"enum": ["required", "supporting", "inspiration"]}, "mutable": {"type": "boolean"}}}}}},
+    "change_scope": {"type": "object", "properties": {"allowed_paths": {"type": "array", "items": {"type": "string"}}, "read_only_paths": {"type": "array", "items": {"type": "string"}}, "forbidden_paths": {"type": "array", "items": {"type": "string"}}}},
+    "fidelity_contract": {"type": "object"},
+    "adaptation_policy": {"type": "object"},
+    "ui_states": {"type": "array", "items": {"type": "string"}},
+    "viewports": {"type": "array", "items": {"type": "object", "required": ["name", "width", "height"]}},
+    "evidence_requirements": {"type": "array", "items": {"type": "object", "required": ["type"]}}
+  }
+}

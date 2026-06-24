@@ -1,0 +1,22 @@
+{
+  "id": "LOT-AREA-001",
+  "title": "Perform a concrete action",
+  "category": "category-name",
+  "description": "Problem/Goal: ...\nKey actions: ...\nOut of scope: ...\nSuccess criteria: ...",
+  "objective": "Desired outcome",
+  "result": "Tangible completed state",
+  "steps": ["Inspect the local contract.", "Make the scoped change.", "Run proportional verification."],
+  "exclusive_resources": [],
+  "dependencies": [],
+  "priority": "2",
+  "planning_profile": "general",
+  "routing_hints": {
+    "execution_mode": "standard",
+    "reasoning_depth": "standard",
+    "context_scope": "module",
+    "risk_level": "medium",
+    "validation_profile": "standard"
+  },
+  "acceptance_criteria": ["The stated behavior is present.", "Proportional verification passes."],
+  "notes": ""
+}

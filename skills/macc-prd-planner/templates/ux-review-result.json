@@ -1,0 +1,14 @@
+{
+  "task_id": "UX-REVIEW-001",
+  "decision": "changes_requested",
+  "violations": [
+    {
+      "criterion": "AC-UI-03",
+      "severity": "blocking",
+      "location": "active-workers-panel",
+      "expected": "Worker status remains visible without expanding the row.",
+      "observed": "Status is visible only after expansion.",
+      "evidence": ".macc/evidence/UX-REVIEW-001/review-01.png"
+    }
+  ]
+}

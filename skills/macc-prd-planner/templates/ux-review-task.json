@@ -1,0 +1,15 @@
+{
+  "id": "UX-REVIEW-001",
+  "title": "Review the approved interface for fidelity and accessibility",
+  "category": "ux-review",
+  "description": "Problem/Goal: assess the implementation against authoritative sources.\nKey actions: inspect states, viewports, evidence, accessibility, and protected paths.\nOut of scope: production code changes.\nSuccess criteria: structured review decision and violations are recorded.",
+  "objective": "Produce a decision-ready UX fidelity review.",
+  "result": "Approved or changes_requested decision with structured violations.",
+  "steps": ["Review required sources and evidence.", "Inspect required states and viewports.", "Record structured findings and decision."],
+  "exclusive_resources": [],
+  "dependencies": [],
+  "priority": "1",
+  "planning_profile": "ux-review",
+  "routing_hints": {"execution_mode": "standard", "reasoning_depth": "standard", "context_scope": "module", "risk_level": "high", "validation_profile": "heavy"},
+  "acceptance_criteria": ["The review includes a decision and criterion-linked violations with severity and evidence."]
+}

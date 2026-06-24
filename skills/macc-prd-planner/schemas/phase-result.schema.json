@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC UI performer phase result",
+  "type": "object",
+  "required": ["task_id", "status", "evidence", "adaptation_decisions", "protected_path_violations", "unresolved_ambiguities"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "status": {"type": "string"},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "adaptation_decisions": {"type": "array"},
+    "protected_path_violations": {"type": "array"},
+    "unresolved_ambiguities": {"type": "array"}
+  }
+}

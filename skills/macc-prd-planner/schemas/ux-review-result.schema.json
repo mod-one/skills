@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC UX review result",
+  "type": "object",
+  "required": ["task_id", "decision", "violations"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "decision": {"enum": ["approved", "changes_requested"]},
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "severity", "location", "expected", "observed", "evidence"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "severity": {"enum": ["blocking", "major", "minor", "advisory"]},
+          "location": {"type": "string"},
+          "expected": {"type": "string"},
+          "observed": {"type": "string"},
+          "evidence": {"type": "string"}
+        }
+      }
+    }
+  }
+}

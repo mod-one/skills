@@ -1,0 +1,23 @@
+{
+  "id": "WEB-UI-001",
+  "title": "Implement an approved screen as a coherent unit",
+  "category": "frontend-ui",
+  "description": "Problem/Goal: Implement the approved interface without redesign.\nAuthoritative references: ...\nSource authority and precedence: task constraints, screen reference, imposed system, project patterns.\nFidelity mode: exact.\nDesign-system role: consumer.\nOut of scope: token, shell, library, and copy changes.\nSuccess criteria: specified states, viewports, and evidence conform to the sources.",
+  "objective": "Deliver a faithful approved UI implementation.",
+  "result": "A tested coherent screen/component with required fidelity evidence.",
+  "labels": ["frontend-ui", "ui-fidelity", "design-system-consumer", "visual-review-required"],
+  "steps": ["Inspect required sources and map regions to primitives.", "Implement states, responsive behavior, and local accessibility together.", "Capture required evidence and verify protected paths."],
+  "exclusive_resources": [],
+  "dependencies": [],
+  "priority": "1",
+  "planning_profile": "ui-fidelity",
+  "routing_hints": {"execution_mode": "standard", "reasoning_depth": "standard", "context_scope": "module", "risk_level": "high", "validation_profile": "heavy"},
+  "design_contract": {"fidelity_mode": "exact", "design_system_role": "consumer", "sources": [{"path": "design/reference.html", "type": "screen-reference", "authority": "required", "mutable": false}]},
+  "change_scope": {"allowed_paths": ["web/src/pages/feature/**"], "read_only_paths": ["design/**", "web/src/design-system/**"], "forbidden_paths": []},
+  "fidelity_contract": {"must_preserve": ["information architecture", "visual hierarchy", "product copy", "interaction semantics"], "forbidden_changes": ["No redesign", "No new visual tokens", "No copy rewrite"]},
+  "adaptation_policy": {"allowed": ["Use equivalent existing components", "Add accessible names and focus"], "requires_escalation": ["Required component is missing", "Required sources conflict"]},
+  "ui_states": ["populated"],
+  "viewports": [{"name": "desktop", "width": 1440, "height": 900}],
+  "evidence_requirements": [{"type": "screenshot", "state": "populated", "viewport": "desktop"}, {"type": "design-token-audit"}, {"type": "protected-path-check"}],
+  "acceptance_criteria": ["Only supplied design-system tokens and variants are used.", "The required screenshot is captured at the specified viewport.", "No read-only or forbidden path changes."]
+}

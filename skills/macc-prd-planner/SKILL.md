@@ -1,518 +1,176 @@
 ---
 name: macc-prd-planner
 description: >
-  Use this skill whenever you (the AI planner) must generate or update a `prd.json` file for MACC.
-  It decomposes a lot into small, unambiguous, parallel-safe tasks that stay compatible with
-  worktree-scoped execution, coordinator scheduling, PRD reconciliation, existing error conventions,
-  and token-efficient model routing by phase. Do NOT use for implementation or code review.
+  Generate or safely update a MACC `prd.json` execution plan, including dependency-safe task
+  decomposition, repository inspection, schema-aware validation, and strict UX/UI fidelity contracts.
+  Use for MACC lots involving backend, infrastructure, frontend logic, approved UI implementation,
+  design-system work, or UX review. Do not use to implement code or review a code diff.
 ---
 
-# MACC PRD Planner Skill - `prd.json` Generator and Updater
-
-## Mission
+# MACC PRD Planner
 
-Produce or update a `prd.json` that helps MACC execute work with:
-- very small, clear tasks;
-- minimal coupling and minimal collision risk;
-- stable task IDs;
-- compatibility with MACC worktree context files and PRD reconciliation flows;
-- proportional validation expectations;
-- routing hints that help the coordinator or runner choose the lightest viable model.
+Produce executable, update-safe `prd.json` files. Decide semantic task boundaries and contracts; use the bundled deterministic CLI to establish repository facts and validate objective rules.
 
-The planner classifies tasks.
-The planner does **not** choose concrete provider/model names.
-Model selection remains a coordinator or runner responsibility.
+Do not select provider-specific models. `routing_hints` remain abstract and runtime-resolved.
 
-## Use This Skill When
+## Required workflow
 
-- a new development lot must be decomposed into `prd.json` tasks;
-- an existing `prd.json` must be updated without breaking task identity;
-- the repository already follows MACC conventions or is being planned for MACC execution;
-- parallel execution and resource contention matter.
+1. Frame the lot: goal, assumptions, constraints, existing PRD status, shared hot zones, and likely cross-cutting seams.
+2. Inspect the repository before planning:
 
-## Do Not Use This Skill For
+   ```bash
+   python3 <skill-root>/scripts/macc_prd.py inspect --root .
+   python3 <skill-root>/scripts/macc_prd.py build-context --root .
+   ```
 
-- implementing code;
-- reviewing code changes;
-- forcing provider-specific model names into tasks;
-- inventing a new repository-wide error taxonomy when one already exists.
-
-## MACC Planning Context
+   Read `prd.json.example` as the schema source of truth. Also inspect `prd.json`, `worktree.prd.json`, `.macc/tool.json`, `.macc/worktree.json`, and MACC operational paths when present.
+3. Classify every task on both axes: `routing_hints.execution_mode` and `planning_profile`.
+4. For UI-sensitive work, inspect every required design source before task decomposition:
 
-Treat these constraints as mandatory whenever they are relevant in the repository:
-
-- `prd.json.example` is the schema source of truth.
-- `worktree.prd.json` is the worktree-scoped task context used by performers.
-- `.macc/tool.json` describes tool-specific execution context.
-- `.macc/worktree.json` describes worktree identity and local scope.
-- `.macc/log/` and adjacent MACC runtime artifacts are hot/shared operational areas.
-- The coordinator schedules READY tasks using fields such as `priority`, `dependencies`, `exclusive_resources`, `category`, and `id`.
-- `sync-prd` and `audit-prd` rely on task identity stability and accurate task state descriptions.
-
-Do not produce a plan that would make these flows ambiguous or fragile.
-
-## Core Planning Principles
-
-### 1. Plan for execution, not for theory
-A good task should be directly executable by a performer with little interpretation.
-
-Each task must clearly answer:
-- what problem it solves;
-- what will be changed;
-- what stays out of scope;
-- what concrete result must exist when the task is complete.
-
-### 2. Keep tasks small
-Default target: one task should fit comfortably within one focused performer run.
-
-If a task feels broad, split it.
-Prefer more small tasks over fewer broad tasks.
-
-### 3. Parallel safety is first-class
-Every task must explicitly consider:
-- `dependencies`;
-- `exclusive_resources`;
-- hot files or hot folders;
-- shared schemas, shared contracts, shared operational files, and shared docs.
-
-If two tasks would likely collide, either:
-- add the right dependency,
-- assign the same `exclusive_resources`,
-- or split the work differently.
-
-### 4. Plan by responsibility boundaries
-Prefer task boundaries that align with:
-- domain contracts and invariants,
-- adapters and integrations,
-- validation or mapping seams,
-- UI/API surface changes,
-- docs or observability work only when separately useful.
-
-Avoid planning around vague dumping grounds such as generic `utils`, broad “cleanup”, or “misc fixes”.
-
-### 5. Reuse the repository's existing error model
-Do not force a new global error taxonomy into the plan.
-
-Plan tasks to reuse the repository's existing error conventions first.
-When relevant:
-- coordinator and runner work should stay compatible with canonical classes and existing `E***` semantics;
-- web-facing API work should stay compatible with the structured envelope and `MACC-WEB-XXXX` conventions;
-- other modules should follow their local subsystem conventions.
-
-Only create explicit error-model work when the lot truly changes error handling behavior, mappings, or observability.
-
-### 6. Proportionality over uniform heaviness
-Do not give every task the same delivery burden.
-Use the lightest planning mode that still protects quality.
-
-### 7. Documentation and tests are mandatory in every PRD
-Every PRD **must** include, at minimum:
-- at least one dedicated task for **documentation updates** (e.g. updating README, API docs, architecture notes, changelogs, or inline doc comments that are not trivially covered by code changes);
-- at least one dedicated task for **tests and verification** (e.g. unit tests, integration tests, end-to-end scenarios, regression checks, or manual verification steps when automated tests are absent).
-
-These tasks must be explicit, tracked, and never buried inside feature tasks.
-If the lot is genuinely trivial and documentation or tests truly do not apply, state the reason explicitly in `assumptions`.
-
-Do not skip these tasks silently.
-
-### 7. Stable identity matters
-When updating an existing `prd.json`:
-- preserve task IDs whenever the task is still conceptually the same;
-- do not rename IDs casually;
-- do not delete or rewrite completed-task meaning lightly;
-- prefer updating `description`, `notes`, `result`, or `steps` over changing identity.
-
-The plan must remain compatible with later `sync-prd` and `audit-prd` operations.
-
-## Task Planning Modes
-
-Each task should be classified with the lightest planning mode that fits.
-
-### Micro
-Use when the task is local, low-risk, and narrow.
-Examples:
-- focused bugfix in one module;
-- small validation update;
-- narrow test addition;
-- tiny adapter correction;
-- local docs clarification.
-
-Expected shape:
-- one small scope;
-- few touched files;
-- minimal dependencies;
-- light validation profile;
-- no architecture note unless explicitly required.
-
-### Standard
-Use when the task changes behavior across a small boundary or introduces a new internal seam.
-Examples:
-- new contract plus one implementation task;
-- targeted API endpoint change;
-- coordinator rule update in one subsystem;
-- moderate refactor inside one domain.
-
-Expected shape:
-- module-level context;
-- targeted tests;
-- proportional observability expectations;
-- stronger dependency and exclusive-resource mapping.
-
-### Structural
-Use only when the task changes shared contracts, orchestration rules, cross-module architecture, or a major hotspot.
-Examples:
-- shared schema changes;
-- deep refactor of a hotspot or god file;
-- coordinator dispatch logic changes;
-- migration of a shared interface used by multiple performers.
-
-Expected shape:
-- cross-cutting context is explicit;
-- migration or compatibility thinking is visible;
-- stronger validation profile;
-- architecture note or decision task when needed.
-
-## Anti-God-File and Hotspot Planning Policy
-
-The planner must reduce collisions before implementation begins.
-
-A file or area is considered risky when one or more of these signals appear:
-- it mixes unrelated responsibilities;
-- it changes for unrelated tasks;
-- it is difficult to test in isolation;
-- it is a recurring conflict hotspot;
-- it grows faster than neighboring files or modules;
-- multiple upcoming tasks would need to touch it.
-
-Soft thresholds for attention:
-- over 300 lines: check whether responsibilities are already mixed;
-- over 500 lines: avoid adding more unrelated logic without an extraction plan;
-- over 800 lines: prefer a split or extraction task before feature growth unless clearly justified.
-
-Planner actions for risky files or hotspots:
-- create an extraction or split task before feature growth when possible;
-- mark the area in `exclusive_resources` if parallel collision risk is real;
-- avoid generating several simultaneous tasks that all require the same dense file;
-- prefer nearby module extraction over continued expansion of a central file.
-
-Forbidden planning patterns:
-- tasks that tell performers to append more unrelated helpers to a shared file;
-- several parallel tasks that all depend on the same dense file without exclusivity;
-- vague “cleanup” tasks that hide structural refactors inside feature work.
-
-## Routing Hints for Token-Efficient Model Selection
-
-The planner should provide **routing hints**, not concrete models.
-
-Why:
-- token efficiency depends on phase, risk, and scope;
-- the same task may need light reasoning for triage and deeper reasoning for architecture review;
-- the coordinator or runner knows the current tool inventory and can map abstract hints to actual models.
-
-### Required rule
-Every task should include a `routing_hints` object unless the repository schema forbids custom fields.
-
-Recommended fields:
-- `execution_mode`: `micro | standard | structural`
-- `reasoning_depth`: `light | standard | deep`
-- `context_scope`: `local | module | cross-cutting`
-- `risk_level`: `low | medium | high`
-- `validation_profile`: `light | standard | heavy`
-
-Recommended default interpretation:
-- exploration, triage, light review, summary -> `reasoning_depth: light`
-- normal implementation planning -> `reasoning_depth: standard`
-- hard planning, deep refactor, architecture, recovery analysis -> `reasoning_depth: deep`
-
-Escalate one level when one or more of these are true:
-- `execution_mode` is `structural`;
-- `context_scope` is `cross-cutting`;
-- `risk_level` is `high`;
-- the task affects shared contracts or operational hotspots.
-
-Do not encode provider names, vendor SKUs, or tool-specific model identifiers into the PRD.
-
-## Schema Alignment Rules
-
-### Repository schema is the source of truth
-Before writing output:
-- locate and read the repository's `prd.json.example` when available;
-- match its top-level structure and required fields exactly;
-- preserve ordering and formatting conventions used by the repository;
-- ensure `generated_at` matches the current date;
-- use the repository's timezone and priority mapping conventions.
-
-### Embedded schema is only a memory aid
-If this skill includes an example schema later in the document, treat it only as a reminder.
-Do not prefer it over the repository's actual `prd.json.example`.
-
-### Input tolerance when updating
-When reading an existing `prd.json`:
-- preserve fields that already exist and are still meaningful;
-- do not fail because optional fields are absent;
-- add new optional fields only when they improve execution clarity and stay compatible with the repo schema.
-
-## Required Task Fields
-
-At minimum, each task should include the fields required by the repository schema.
-Common fields usually include:
-- `id`
-- `title`
-- `category`
-- `description`
-- `objective`
-- `result`
-- `steps`
-- `exclusive_resources`
-- `dependencies`
-- `priority`
-
-Recommended optional fields when supported:
-- `notes`
-- `labels`
-- `routing_hints`
-
-## Task Authoring Rules
-
-### IDs and naming
-- IDs must be stable, unique, and searchable.
-- Use a consistent prefix by lot and area.
-- Titles must be action-oriented and concrete.
-- Preserve IDs for conceptually unchanged tasks during updates.
-
-### Description quality
-Each task description should include:
-- Problem or Goal
-- Key Actions
-- Out of Scope
-- Success Criteria
-
-Avoid vague phrasing such as:
-- “improve system”
-- “cleanup code”
-- “make it better”
-- “fix issues”
-
-### Steps quality
-Steps should be short, concrete, and sequenced.
-Do not turn `steps` into a huge implementation SOP.
-Use steps to clarify execution order, not to micromanage the performer.
-
-### Result quality
-`result` must describe the expected tangible state:
-- files, modules, endpoints, schemas, task metadata, docs, or observable behavior.
-
-## Planning Workflow
-
-### Step 0 - Frame the lot
-Produce a short planning frame:
-- lot goal;
-- assumptions;
-- constraints;
-- existing PRD or new PRD;
-- hot zones;
-- shared operational files or directories;
-- likely cross-cutting seams.
-
-### Step 1 - Read the MACC context
-When present, inspect the planning context that affects execution safety:
-- `prd.json.example`
-- existing `prd.json`
-- `worktree.prd.json`
-- `.macc/tool.json`
-- `.macc/worktree.json`
-- `.macc/log/` and nearby operational paths
-
-Do not plan tasks that casually rewrite MACC operational files unless the lot explicitly requires it.
-
-### Step 2 - Decide task boundaries
-Break the lot by responsibility boundaries.
-Prefer separating:
-- contracts, types, invariants;
-- implementation behind a contract;
-- adapter/integration changes;
-- documentation updates (never merged silently into feature tasks);
-- tests and verification (unit, integration, regression, or manual verification);
-- structural extraction work from feature work when hotspots are involved.
-
-### Step 3 - Add contracts-first tasks when useful
-When parallel work or shared contracts are likely:
-- create an early task for the contract, schema, type, invariant, or interface boundary;
-- make downstream implementation tasks depend on it.
-
-Do this only when it genuinely reduces collisions or ambiguity.
-Do not create ceremonial contract tasks for trivial micro work.
-
-### Step 4 - Set dependencies and exclusive resources
-For each task:
-- keep `dependencies` minimal and explicit;
-- add `exclusive_resources` for true hotspots, dense files, shared schemas, shared docs, shared operational files, or high-conflict paths;
-- avoid fake exclusivity on areas that can safely proceed in parallel.
-
-If two tasks touch the same real hotspot, they should not be parallel-ready at the same time.
-
-### Step 5 - Classify routing hints
-For each task, classify:
-- `execution_mode`
-- `reasoning_depth`
-- `context_scope`
-- `risk_level`
-- `validation_profile`
-
-The planner classifies.
-The runtime maps those hints to the lightest viable model.
-
-### Step 6 - Apply proportional delivery expectations
-Plan the minimum necessary validation.
-Do not blindly attach the same checklist to every task.
-
-Typical guidance:
-- micro -> focused validation, targeted test update if behavior changes;
-- standard -> targeted tests and proportional observability updates when relevant;
-- structural -> stronger validation and explicit compatibility thinking.
-
-Do not assign post-integration operational monitoring ownership to performers inside task text.
-That belongs to runtime operations, coordinator supervision, or the human/operator layer.
-
-### Step 7 - Validate clarity and execution safety
-Split or rewrite any task that:
-- touches too many domains at once;
-- hides a hotspot refactor inside a feature task;
-- has vague success criteria;
-- depends on an unresolved architecture decision;
-- would break ID stability during PRD updates;
-- would force several performers into the same dense file without exclusivity.
-
-### Step 8 - Validate PRD update safety
-When updating an existing PRD:
-- keep completed tasks stable unless they are genuinely wrong;
-- do not repurpose an old ID for a different meaning;
-- prefer adding new tasks for newly discovered work;
-- adjust notes, descriptions, results, and steps of remaining tasks to reflect the latest known reality;
-- preserve compatibility with later `audit-prd` refinement.
-
-## Output Checklist
-
-Before delivering `prd.json`, verify:
-- it matches the repository's `prd.json.example` schema;
-- task IDs are stable, unique, and update-safe;
-- every task has clear problem, actions, out-of-scope, and success criteria;
-- dependencies are explicit and minimal;
-- exclusive resources are used for true collision areas;
-- hotspots and god-file risks were planned around, not ignored;
-- error handling expectations reuse the existing repository conventions;
-- delivery expectations are proportional to task type;
-- routing hints are present when allowed by the schema;
-- the JSON is valid and consistently formatted;
-- at least one documentation-update task is present (or an explicit assumption explains why it is omitted);
-- at least one test/verification task is present (or an explicit assumption explains why it is omitted).
-
-## Minimal Reference Shape
-
-Use this only as a reminder if the repository example is unavailable.
+   ```bash
+   python3 <skill-root>/scripts/macc_prd.py inspect-design --root . --path <design-system-dir>
+   python3 <skill-root>/scripts/macc_prd.py inspect-html --root . --path <reference.html>
+   ```
+
+   Create a `reference_coverage` map from each screen/component area to its authoritative sources. The generated context inventories facts; the planner supplies this semantic mapping.
+
+5. Define coherent task boundaries, dependencies, `exclusive_resources`, and change boundaries.
+6. Generate or update `prd.json`, preserving existing task IDs when their responsibility has not changed.
+7. Validate, repair only the reported defect, and validate again. Make at most two automatic repair passes:
+
+   ```bash
+   python3 <skill-root>/scripts/macc_prd.py validate --root . --file prd.json
+   python3 <skill-root>/scripts/macc_prd.py validate --root . --file prd.json --profile ui-fidelity
+   ```
+
+8. Deliver only a valid PRD, or report blocking diagnostics. Never delete requirements merely to satisfy validation.
+
+The CLI emits JSON diagnostics. Use `explain` for a code:
+
+```bash
+python3 <skill-root>/scripts/macc_prd.py explain --diagnostic MACC-PRD-6003
+```
+
+The script is a portable, deterministic compatibility implementation. Replace it with the MACC Rust core when available; preserve command names, JSON output shape, and diagnostic codes.
+
+## Universal planning policy
+
+- Plan for one focused performer run per task, with clear goal, actions, out-of-scope work, result, and observable success criteria.
+- Keep tasks small, but do not split a UI task below its smallest coherent visual and behavioral unit.
+- Treat dependencies and `exclusive_resources` as first-class scheduling constraints. They prevent collisions; they do **not** grant or restrict write access.
+- Reuse the repository's existing error model. Do not invent a global taxonomy.
+- Include dedicated documentation and verification tasks unless a specific lot assumption justifies omission.
+- Preserve task identity in updates. Do not repurpose completed or existing IDs for unrelated responsibilities.
+- Avoid adding unrelated behavior to hot files. Plan extraction before further growth where a hotspot mixes responsibilities or creates collision risk.
+- Keep `worktree.prd.json`, coordinator scheduling, `sync-prd`, and `audit-prd` compatibility intact.
+
+## Two-axis classification
+
+`execution_mode` measures technical breadth and risk:
+
+- `micro`: local, low-risk work with focused validation.
+- `standard`: a module-level behavior change or new internal seam with targeted tests.
+- `structural`: shared contracts, orchestration, cross-module architecture, migrations, or major hotspots; include compatibility thinking and heavy validation.
+
+`planning_profile` selects the domain contract. Use the lightest applicable profile:
+
+- `general` (default): backend, infrastructure, data, documentation, tests, CLI, and ordinary refactors.
+- `frontend-logic`: non-visual client code such as API clients, stores, route guards, caching, and build configuration.
+- `ui-fidelity`: faithfully implement an approved screen, component, layout, flow, or behavior from imposed sources.
+- `ui-exploration`: explore a new visual direction only when creative exploration is explicitly authorized.
+- `design-system-change`: extend, migrate, replace, or reorganize a design system as the task result.
+- `ux-review`: assess fidelity, usability, accessibility, consistency, or interaction semantics without primary implementation work.
+
+Do not infer `ui-exploration` from the presence of frontend code. Use `ui-fidelity` when strict compliance, an imposed design system, HTML reference, visual prototype, screenshot, graphic charter, approved UI, or explicit no-deviation instruction exists.
+
+## UI contracts
+
+For `ui-fidelity`, `ui-exploration`, `design-system-change`, and relevant `ux-review` tasks, use the optional fields in [ui-fidelity-contract.schema.json](schemas/ui-fidelity-contract.schema.json) when the repository schema permits custom fields. Start from the applicable template in [templates](templates/).
+
+When custom fields are forbidden, encode the same contract in `description`, `acceptance_criteria`, `labels`, and `notes` using [acceptance-criteria-guide.md](references/acceptance-criteria-guide.md). Do not silently drop a contract because the schema is older.
+
+### Sources, authority, and conflicts
+
+Put typed sources in `design_contract.sources`. Set every source to one of:
+
+- `required`: the performer must comply.
+- `supporting`: resolves details absent from required sources.
+- `inspiration`: permits creative reinterpretation.
+
+Do not downgrade an imposed specification or design system to `inspiration`.
+
+Default precedence is: explicit task constraints; task-specific screen/component specification; imposed design system; project patterns; project-wide standards; generic agent preferences. Generic preferences never override project sources.
+
+If required sources materially conflict, create a contract-resolution task and block dependent work, or stop and report that the PRD cannot safely be finalized.
+
+### Fidelity modes and design-system roles
+
+Every `ui-fidelity` and `ui-exploration` task needs `fidelity_mode`:
+
+- `exact`: default for approved references; no voluntary redesign, content simplification, invented tokens, rewritten copy, replacement components, decoration, or generic modernization.
+- `adaptive`: only explicitly stated responsive, accessibility, i18n, platform, or equivalent-component adaptations.
+- `exploratory`: substantial visual interpretation; use only when expressly authorized.
+
+Missing information is not permission to redesign. Reuse the nearest compatible existing pattern for minor gaps; make material ambiguity a clarification or contract-resolution dependency.
+
+Every task that references a design system needs `design_system_role`: `consumer`, `extension`, `migration`, or `none`.
+
+`consumer` is the default for an imposed system. It must not change system sources, tokens, color/font/spacing/radius/shadow scales, icon family, component library, or shared primitives unless specifically authorized. `extension` tasks include rationale, API, docs, tests/stories, migration impact, and dependencies. `migration` tasks include compatibility, rollout, regression, deprecation, docs, and cross-screen impact.
+
+### Scope, evidence, and review
+
+Use `change_scope.allowed_paths` for intended writes, `read_only_paths` for inspect-only sources, and `forbidden_paths` for prohibited areas. Set all required immutable sources to read-only or forbidden. A reviewer or merge gate must compare the final diff to these boundaries.
+
+For each relevant task, select only applicable `ui_states` and concrete `viewports`. Require proportional evidence: screenshots, interaction tests, accessibility checks, design-token audit, protected-path check, component story, visual regression, or manual fidelity review.
+
+Acceptance criteria must be observable and source-specific. Reject vague criteria such as “looks polished,” “modern,” “intuitive,” or “matches the design” without a named source and dimension.
+
+For a UX review task, require a structured decision (`approved` or `changes_requested`) and violations with criterion, severity (`blocking`, `major`, `minor`, `advisory`), location, expected/observed behavior, and evidence path. Only configured blocking/major findings gate a merge.
+
+## Execution and integration boundaries
+
+The resulting contract is enforced after planning:
+
+- Performers read every required source before editing, remain in `allowed_paths`, do not modify `read_only_paths` or `forbidden_paths`, honor the fidelity mode and design-system role, produce required evidence, and escalate material ambiguity. Record evidence, adaptation decisions, protected-path violations, and unresolved ambiguities using [phase-result.schema.json](schemas/phase-result.schema.json).
+- Reviewers verify sources, fidelity, design-system use, protected paths, states, viewports, evidence, accessibility, and acceptance criteria. Record the decision and violations using [ux-review-result.schema.json](schemas/ux-review-result.schema.json) and [the result template](templates/ux-review-result.json).
+- Coordinators or merge gates block configured mandatory-evidence failures, unauthorized protected-path changes, unresolved blocking UX violations, missing required sources, material redesign of an `exact` task, and unauthorized consumer token/library changes.
+
+MACC Web/TUI editors should expose profile-aware forms, discovered sources, source authority, contracts, diagnostics, evidence, and review findings. A future MCP server may expose the same repository context, inspectors, schema, validators, and diagnostics, but it must delegate to the shared MACC PRD core rather than duplicate policy. MCP is optional and must not replace this semantic planning workflow.
+
+## Task authoring
+
+Each task uses repository-required fields and, where supported, these recommended fields:
 
 ```json
 {
-  "project": "project name",
-  "version": "1.0",
-  "generated_at": "YYYY-MM-DD",
-  "timezone": "Europe/Paris",
-  "language": "en",
-  "priority_mapping": {
-    "0": "P0 / This task should not be done in parallel with another!",
-    "1": "P1 / Must-have",
-    "2": "P2 / Should-have",
-    "3": "P3 / Nice-to-have or preparatory",
-    "4": "P4 / Lowest priority"
-  },
-  "routing_hints_mapping": {
-    "execution_mode": "micro | standard | structural",
-    "reasoning_depth": "light | standard | deep",
-    "context_scope": "local | module | cross-cutting",
-    "risk_level": "low | medium | high",
-    "validation_profile": "light | standard | heavy"
-  },
-  "source_repositories": {
-    "cgui_engine": "https://github.com/ccc/ddd.git"
-  },
-  "resources": [
-    "docs/specifications/graphic_charter.md"
-  ],
-  "product_summary": "Short product summary for the lot file.",
-  "global_constraints": [
-    "Capture before organization: no metadata is mandatory for initial capture.",
-    "One thought equals one living card-node: conversions and moves preserve identity.",
-  ],
-  "integration_policy": {
-    "rule": "...",
-    "host_responsibilities": [
-      "Flutter rendering and design system",
-      "domain mutations and command execution"
-    ],
-    "responsibilities": [
-      "gravity runtime state",
-      "effect planning"
-    ]
-  },
-  "global_constraints": [
-    "Capture before organization: no metadata is mandatory for initial capture.",
-    "AI is intermediate, explainable, dismissible, and validated by the user."
-  ],
-  "lot": {
-    "id": "NOY-L9",
-    "name": "Lot Name",
-    "goal": "State the lot goal in one sentence.",
-    "assumptions": [
-      "State prerequisite assumptions here."
-    ],
-    "hot_zones": [
-      "prd/",
-      "scripts/"
-    ]
-  },
-  "tasks": [
-    {
-      "id": "LOT-AREA-001",
-      "title": "Action-oriented title",
-      "category": "category-name",
-      "description": "Problem/Goal: ...\nKey actions: ...\nOut of scope: ...\nSuccess criteria: ...",
-      "objective": "High-level goal",
-      "result": "Expected result",
-      "labels": [
-        "macc",
-        "prd"
-      ],
-      "steps": [
-        "Step 1",
-        "Step 2"
-      ],
-      "exclusive_resources": [
-        "path-or-module"
-      ],
-      "dependencies": [],
-      "priority": "1",
-      "routing_hints": {
-        "execution_mode": "standard",
-        "reasoning_depth": "standard",
-        "context_scope": "module",
-        "risk_level": "medium",
-        "validation_profile": "standard"
-      },
-      "acceptance_criteria": [
-        "Example PRD files validate successfully.",
-        "All changed code is covered by proportional tests or documented validation.",
-        "The task does not reimplement CGUI core logic unless explicitly scoped as a host-side adapter."
-      ],
-      "notes": "Contextual notes"
-    }
-  ]
+  "planning_profile": "general",
+  "routing_hints": {
+    "execution_mode": "standard",
+    "reasoning_depth": "standard",
+    "context_scope": "module",
+    "risk_level": "medium",
+    "validation_profile": "standard"
+  }
 }
 ```
 
-## Refusal or Escalation Conditions
+Write descriptions with: Problem/Goal, Key actions, Out of scope, and Success criteria. Use action-oriented titles; keep steps short and sequenced; describe tangible results.
 
-Stop and report instead of improvising when:
-- the repository schema and the requested output conflict in a way that cannot be reconciled safely;
-- the lot would require repurposing existing task IDs in a misleading way;
-- the only apparent plan would hide a major architecture decision inside ordinary feature tasks;
-- the user asks for provider-specific model binding directly inside the PRD even though runtime selection should stay abstract.
+For UI tasks, add explicit authoritative sources, precedence, fidelity mode, design-system role, scope boundaries, allowed adaptations, escalation conditions, states, viewports, evidence, and precise acceptance criteria.
+
+Use contracts-first tasks only when they reduce a real collision or ambiguity. Do not dispatch parallel UI implementation tasks while their shared design contract or primitives are unstable. Do not split markup, styling, responsiveness, states, and local accessibility across unrelated tasks for the same component or screen.
+
+## Completion checks
+
+Before delivery, confirm:
+
+- JSON and repository schema compatibility; unique stable IDs; valid dependencies; no cycles; valid priority and routing hints.
+- Explicit, minimal dependencies and real collision protection; hot zones are planned around.
+- At least one documentation task and one verification task, or an explicit lot assumption for each omission.
+- For UI-sensitive tasks: sources are inspected and exist; authority/precedence, fidelity mode, design-system role, scope boundaries, states/viewports, adaptations, observable criteria, and evidence are complete.
+- `consumer` tasks do not authorize design-system writes; required sources are immutable; required-source conflicts are resolved.
+- Exact tasks preserve the authoritative reference rather than reinterpreting it.
+
+## Escalate instead of improvising
+
+Stop and report when the repository schema conflicts with the requested PRD; IDs would be misleadingly repurposed; a material architecture decision is hidden in an ordinary task; a required source is unavailable or conflicts with another required source; exact work lacks material interaction/responsive behavior; a consumer task requires a system change; no authoritative source or reusable pattern exists for strict fidelity; the schema cannot represent or compatibly encode a required contract; or blocking validation diagnostics remain after two repair passes.
