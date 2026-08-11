@@ -44,6 +44,8 @@ DIAGNOSTICS = {
     "MACC-PRD-6002": ("Vague UI acceptance criterion", "Use source-specific, observable acceptance criteria.", False),
     "MACC-PRD-6003": ("Required UI evidence missing", "Add proportional screenshot, interaction, accessibility, token, or protected-path evidence.", True),
     "MACC-PRD-6004": ("UI task fragmented below a coherent unit", "Combine layers of the same visual unit or establish a stable shared contract first.", False),
+    "MACC-PRD-7001": ("PRD scope contract missing or invalid", "Declare exactly one file-level prd_scope with kind feature or shared-foundation, stable id, name, and definition.", True),
+    "MACC-PRD-7002": ("Task scope does not match PRD scope", "Move unrelated feature work to another PRD, or change the task scope_ref/feature_id to the file-level prd_scope id.", True),
 }
 
 
@@ -288,6 +290,37 @@ def is_dependent(start: str, target: str, graph: dict[str, list[str]]) -> bool:
     return False
 
 
+def prd_scope(data: dict[str, Any]) -> dict[str, Any] | None:
+    scope = data.get("prd_scope")
+    if not isinstance(scope, dict):
+        scope = data.get("lot") if isinstance(data.get("lot"), dict) else None
+    if not isinstance(scope, dict):
+        return None
+    kind = scope.get("kind") or scope.get("scope_kind") or scope.get("type")
+    identifier = scope.get("id") or scope.get("scope_id") or scope.get("feature_id") or scope.get("foundation_id")
+    name = scope.get("name") or scope.get("title") or scope.get("feature_name") or scope.get("foundation_name")
+    definition = scope.get("definition") or scope.get("scope") or scope.get("summary") or scope.get("objective")
+    normalized = {"kind": kind, "id": identifier, "name": name, "definition": definition}
+    if kind not in {"feature", "shared-foundation"}:
+        return None
+    if not all(isinstance(normalized[key], str) and normalized[key].strip() for key in ("id", "name", "definition")):
+        return None
+    return normalized
+
+
+def task_scope_refs(task: dict[str, Any]) -> list[str]:
+    refs: list[str] = []
+    for key in ("scope_ref", "feature_id", "foundation_id"):
+        value = task.get(key)
+        if isinstance(value, str) and value.strip():
+            refs.append(value.strip())
+    for key in ("scope_refs", "feature_ids"):
+        values = task.get(key)
+        if isinstance(values, list):
+            refs.extend(item.strip() for item in values if isinstance(item, str) and item.strip())
+    return refs
+
+
 def validate(root: Path, file_name: str, profile: str | None, previous_name: str | None) -> dict[str, Any]:
     path = root / file_name
     diagnostics: list[dict[str, Any]] = []
@@ -303,6 +336,13 @@ def validate(root: Path, file_name: str, profile: str | None, previous_name: str
         diagnostics.append(diagnostic("MACC-PRD-1002", detail="Top-level object must contain a tasks array."))
         return validation_output(diagnostics)
     tasks = data["tasks"]
+    scope = prd_scope(data)
+    if scope is None:
+        diagnostics.append(diagnostic("MACC-PRD-7001"))
+    elif scope["kind"] == "feature":
+        raw_scope = data.get("prd_scope") if isinstance(data.get("prd_scope"), dict) else data.get("lot", {})
+        if isinstance(raw_scope, dict) and raw_scope.get("consumer_feature_ids"):
+            diagnostics.append(diagnostic("MACC-PRD-7001", detail="consumer_feature_ids is only valid for shared-foundation PRDs."))
     ids: list[str] = []
     graph: dict[str, list[str]] = {}
     for task in tasks:
@@ -325,6 +365,10 @@ def validate(root: Path, file_name: str, profile: str | None, previous_name: str
         task_id = task.get("id") if isinstance(task, dict) else None
         if not isinstance(task, dict):
             continue
+        if scope is not None:
+            for ref in task_scope_refs(task):
+                if ref != scope["id"]:
+                    diagnostics.append(diagnostic("MACC-PRD-7002", task_id, f"Task scope reference {ref!r} does not match PRD scope {scope['id']!r}."))
         selected_profile = task.get("planning_profile", "general")
         if selected_profile not in PROFILES:
             diagnostics.append(diagnostic("MACC-PRD-4001", task_id, f"Unsupported planning_profile: {selected_profile}"))

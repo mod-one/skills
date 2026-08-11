@@ -9,6 +9,7 @@
   "exclusive_resources": [],
   "dependencies": [],
   "priority": "1",
+  "scope_ref": "feature-or-foundation-id",
   "planning_profile": "ux-review",
   "routing_hints": {"execution_mode": "standard", "reasoning_depth": "standard", "context_scope": "module", "risk_level": "high", "validation_profile": "heavy"},
   "acceptance_criteria": ["The review includes a decision and criterion-linked violations with severity and evidence."]

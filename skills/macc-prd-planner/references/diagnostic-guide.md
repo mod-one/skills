@@ -16,5 +16,7 @@
 | `MACC-PRD-6002` | Vague UI acceptance criterion | Warning |
 | `MACC-PRD-6003` | Required UI evidence missing | Yes |
 | `MACC-PRD-6004` | UI task fragmented below a coherent unit | Warning |
+| `MACC-PRD-7001` | PRD scope contract is missing or invalid | Yes |
+| `MACC-PRD-7002` | Task scope does not match the file-level PRD scope | Yes |
 
 Fix the diagnosed cause; do not weaken an intended contract merely to clear a diagnostic.

@@ -1,0 +1,19 @@
+{
+  "prd_scope": {
+    "kind": "shared-foundation",
+    "id": "foundation-slug",
+    "name": "Shared foundation name",
+    "definition": "The reusable base capability this PRD creates for multiple future features.",
+    "consumer_feature_ids": ["future-feature-a", "future-feature-b"],
+    "out_of_scope": ["Delivering any downstream feature UI or business workflow"]
+  },
+  "lot": {
+    "assumptions": []
+  },
+  "priority_mapping": {
+    "1": "Critical path",
+    "2": "Normal",
+    "3": "Follow-up"
+  },
+  "tasks": []
+}

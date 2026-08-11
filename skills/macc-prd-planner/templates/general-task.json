@@ -9,6 +9,7 @@
   "exclusive_resources": [],
   "dependencies": [],
   "priority": "2",
+  "scope_ref": "feature-or-foundation-id",
   "planning_profile": "general",
   "routing_hints": {
     "execution_mode": "standard",

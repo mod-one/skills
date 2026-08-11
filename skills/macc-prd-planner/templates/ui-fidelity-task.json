@@ -10,6 +10,7 @@
   "exclusive_resources": [],
   "dependencies": [],
   "priority": "1",
+  "scope_ref": "feature-or-foundation-id",
   "planning_profile": "ui-fidelity",
   "routing_hints": {"execution_mode": "standard", "reasoning_depth": "standard", "context_scope": "module", "risk_level": "high", "validation_profile": "heavy"},
   "design_contract": {"fidelity_mode": "exact", "design_system_role": "consumer", "sources": [{"path": "design/reference.html", "type": "screen-reference", "authority": "required", "mutable": false}]},

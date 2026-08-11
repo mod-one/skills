@@ -1,0 +1,18 @@
+{
+  "prd_scope": {
+    "kind": "feature",
+    "id": "feature-slug",
+    "name": "Feature name",
+    "definition": "The single user-visible or business capability this PRD delivers.",
+    "out_of_scope": ["Other features", "Reusable foundation work not required for this feature"]
+  },
+  "lot": {
+    "assumptions": []
+  },
+  "priority_mapping": {
+    "1": "Critical path",
+    "2": "Normal",
+    "3": "Follow-up"
+  },
+  "tasks": []
+}

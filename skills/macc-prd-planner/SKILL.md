@@ -9,13 +9,13 @@ description: >
 
 # MACC PRD Planner
 
-Produce executable, update-safe `prd.json` files. Decide semantic task boundaries and contracts; use the bundled deterministic CLI to establish repository facts and validate objective rules.
+Produce executable, update-safe `prd.json` files. Each PRD file represents exactly one product feature or one shared foundation used by multiple features. Decide semantic task boundaries and contracts; use the bundled deterministic CLI to establish repository facts and validate objective rules.
 
 Do not select provider-specific models. `routing_hints` remain abstract and runtime-resolved.
 
 ## Required workflow
 
-1. Frame the lot: goal, assumptions, constraints, existing PRD status, shared hot zones, and likely cross-cutting seams.
+1. Frame the PRD scope: choose exactly one `prd_scope.kind` (`feature` or `shared-foundation`), one stable scope ID, name, definition, assumptions, constraints, existing PRD status, shared hot zones, and likely cross-cutting seams.
 2. Inspect the repository before planning:
 
    ```bash
@@ -34,7 +34,7 @@ Do not select provider-specific models. `routing_hints` remain abstract and runt
 
    Create a `reference_coverage` map from each screen/component area to its authoritative sources. The generated context inventories facts; the planner supplies this semantic mapping.
 
-5. Define coherent task boundaries, dependencies, `exclusive_resources`, and change boundaries.
+5. Define coherent task boundaries, dependencies, `exclusive_resources`, and change boundaries. Every task must serve the file-level `prd_scope`; move unrelated feature work to a separate PRD.
 6. Generate or update `prd.json`, preserving existing task IDs when their responsibility has not changed.
 7. Validate, repair only the reported defect, and validate again. Make at most two automatic repair passes:
 
@@ -55,6 +55,11 @@ The script is a portable, deterministic compatibility implementation. Replace it
 
 ## Universal planning policy
 
+- Treat one PRD file as one planning unit: either one user-visible/business capability (`feature`) or one reusable enabling layer (`shared-foundation`). Do not mix multiple feature deliveries in the same PRD.
+- Use `prd_scope.id` as the file-level identity. Add `scope_ref` to tasks when the repository schema permits custom task fields; it must match `prd_scope.id`.
+- Use `shared-foundation` only for common infrastructure, contracts, design-system primitives, auth/session substrate, build/test scaffolding, data migrations, or other reusable base work that intentionally supports several future features without delivering any one of them.
+- Put downstream feature names in `prd_scope.consumer_feature_ids` only for traceability. Do not implement those downstream features in the shared-foundation PRD.
+- Resolve edge cases with [prd-scope-policy.md](references/prd-scope-policy.md).
 - Plan for one focused performer run per task, with clear goal, actions, out-of-scope work, result, and observable success criteria.
 - Keep tasks small, but do not split a UI task below its smallest coherent visual and behavioral unit.
 - Treat dependencies and `exclusive_resources` as first-class scheduling constraints. They prevent collisions; they do **not** grant or restrict write access.
@@ -139,10 +144,27 @@ MACC Web/TUI editors should expose profile-aware forms, discovered sources, sour
 
 ## Task authoring
 
+At the file level, prefer this scope contract:
+
+```json
+{
+  "prd_scope": {
+    "kind": "feature",
+    "id": "feature-slug",
+    "name": "Feature name",
+    "definition": "The single capability this PRD delivers.",
+    "out_of_scope": ["Other features and unrelated foundation work"]
+  }
+}
+```
+
+For shared base work, set `"kind": "shared-foundation"` and describe the reusable substrate, not the downstream features that may consume it. Use [prd-scope.schema.json](schemas/prd-scope.schema.json), [feature-prd.json](templates/feature-prd.json), or [shared-foundation-prd.json](templates/shared-foundation-prd.json) as needed.
+
 Each task uses repository-required fields and, where supported, these recommended fields:
 
 ```json
 {
+  "scope_ref": "feature-or-foundation-id",
   "planning_profile": "general",
   "routing_hints": {
     "execution_mode": "standard",
@@ -156,6 +178,8 @@ Each task uses repository-required fields and, where supported, these recommende
 
 Write descriptions with: Problem/Goal, Key actions, Out of scope, and Success criteria. Use action-oriented titles; keep steps short and sequenced; describe tangible results.
 
+If the repository schema forbids `prd_scope` or `scope_ref`, encode the same identity in `lot.kind`, `lot.id`, `lot.name`, `lot.definition`, and each task description. Do not omit the single-feature/shared-foundation contract.
+
 For UI tasks, add explicit authoritative sources, precedence, fidelity mode, design-system role, scope boundaries, allowed adaptations, escalation conditions, states, viewports, evidence, and precise acceptance criteria.
 
 Use contracts-first tasks only when they reduce a real collision or ambiguity. Do not dispatch parallel UI implementation tasks while their shared design contract or primitives are unstable. Do not split markup, styling, responsiveness, states, and local accessibility across unrelated tasks for the same component or screen.
@@ -165,6 +189,7 @@ Use contracts-first tasks only when they reduce a real collision or ambiguity. D
 Before delivery, confirm:
 
 - JSON and repository schema compatibility; unique stable IDs; valid dependencies; no cycles; valid priority and routing hints.
+- The PRD has exactly one valid file-level scope: `feature` or `shared-foundation`; all task `scope_ref`, `feature_id`, `scope_refs`, or `feature_ids` values match that scope.
 - Explicit, minimal dependencies and real collision protection; hot zones are planned around.
 - At least one documentation task and one verification task, or an explicit lot assumption for each omission.
 - For UI-sensitive tasks: sources are inspected and exist; authority/precedence, fidelity mode, design-system role, scope boundaries, states/viewports, adaptations, observable criteria, and evidence are complete.
@@ -173,4 +198,4 @@ Before delivery, confirm:
 
 ## Escalate instead of improvising
 
-Stop and report when the repository schema conflicts with the requested PRD; IDs would be misleadingly repurposed; a material architecture decision is hidden in an ordinary task; a required source is unavailable or conflicts with another required source; exact work lacks material interaction/responsive behavior; a consumer task requires a system change; no authoritative source or reusable pattern exists for strict fidelity; the schema cannot represent or compatibly encode a required contract; or blocking validation diagnostics remain after two repair passes.
+Stop and report when the requested PRD mixes multiple features; a shared-foundation PRD starts delivering a downstream feature; the repository schema conflicts with the requested PRD; IDs would be misleadingly repurposed; a material architecture decision is hidden in an ordinary task; a required source is unavailable or conflicts with another required source; exact work lacks material interaction/responsive behavior; a consumer task requires a system change; no authoritative source or reusable pattern exists for strict fidelity; the schema cannot represent or compatibly encode a required contract; or blocking validation diagnostics remain after two repair passes.

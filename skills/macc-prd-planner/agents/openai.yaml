@@ -1,4 +1,4 @@
 interface:
   display_name: "MACC PRD Planner"
-  short_description: "Plan and validate execution-safe MACC PRDs"
-  default_prompt: "Use $macc-prd-planner to generate or update a validated MACC prd.json for this lot."
+  short_description: "Plan scoped MACC PRDs for one feature or shared foundation"
+  default_prompt: "Use $macc-prd-planner to generate or update a validated MACC prd.json scoped to one feature or one shared foundation."

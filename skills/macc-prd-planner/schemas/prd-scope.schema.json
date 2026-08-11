@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC PRD file scope",
+  "type": "object",
+  "required": ["kind", "id", "name", "definition"],
+  "properties": {
+    "kind": {"enum": ["feature", "shared-foundation"]},
+    "id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "definition": {"type": "string", "minLength": 1},
+    "out_of_scope": {"type": "array", "items": {"type": "string"}},
+    "consumer_feature_ids": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

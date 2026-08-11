@@ -9,6 +9,7 @@
   "exclusive_resources": ["web/src/design-system/"],
   "dependencies": [],
   "priority": "1",
+  "scope_ref": "feature-or-foundation-id",
   "planning_profile": "design-system-change",
   "routing_hints": {"execution_mode": "structural", "reasoning_depth": "deep", "context_scope": "cross-cutting", "risk_level": "high", "validation_profile": "heavy"},
   "design_contract": {"fidelity_mode": "adaptive", "design_system_role": "extension", "sources": []},
