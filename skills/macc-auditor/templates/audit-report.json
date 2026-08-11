@@ -1,0 +1,37 @@
+{
+  "decision": "changes_requested",
+  "scope": {
+    "kind": "feature",
+    "id": "feature-slug",
+    "name": "Feature name"
+  },
+  "summary": "The final result does not yet satisfy the requested feature because one required criterion is only partially implemented.",
+  "traceability": [
+    {
+      "id": "REQ-001",
+      "source": "prd.json acceptance_criteria",
+      "requirement": "Required behavior or criterion text.",
+      "expected": "Observable expected result.",
+      "implementation_evidence": ["path/to/file.ts:functionName"],
+      "verification_evidence": ["path/to/test.spec.ts"],
+      "result": "partial"
+    }
+  ],
+  "findings": [
+    {
+      "id": "AUDIT-001",
+      "severity": "major",
+      "dimension": "acceptance-criteria",
+      "requirement": "Required behavior or criterion text.",
+      "location": "path/to/file.ts:functionName",
+      "expected": "Observable expected result.",
+      "observed": "Observed final behavior.",
+      "evidence": ["path/to/file.ts", "path/to/test.spec.ts"],
+      "impact": "Why this gap matters.",
+      "suggested_fix": "Smallest correction needed."
+    }
+  ],
+  "evidence_reviewed": ["prd.json", "git diff", "test output"],
+  "unverified_items": [],
+  "recommended_next_steps": ["Fix AUDIT-001 and rerun the affected test plus this audit."]
+}

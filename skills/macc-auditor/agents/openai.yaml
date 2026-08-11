@@ -1,0 +1,4 @@
+interface:
+  display_name: "MACC Auditor"
+  short_description: "Produce independent .macc audit reports"
+  default_prompt: "Use $macc-auditor to produce an independent .macc/reports/implementation-audit.md compliance report for the final integrated result."
