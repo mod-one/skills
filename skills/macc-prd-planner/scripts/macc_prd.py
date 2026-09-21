@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
@@ -46,7 +47,32 @@ DIAGNOSTICS = {
     "MACC-PRD-6004": ("UI task fragmented below a coherent unit", "Combine layers of the same visual unit or establish a stable shared contract first.", False),
     "MACC-PRD-7001": ("PRD scope contract missing or invalid", "Declare exactly one file-level prd_scope with kind feature or shared-foundation, stable id, name, and definition.", True),
     "MACC-PRD-7002": ("Task scope does not match PRD scope", "Move unrelated feature work to another PRD, or change the task scope_ref/feature_id to the file-level prd_scope id.", True),
+    "MACC-PRD-8001": ("Invalid human approval gate", "Set gate.kind human_approval with subject_task (also listed in dependencies), at least one required_approvers role with count >= 1, quorum all|any|1..N, and bind_to commit_sha.", True),
+    "MACC-PRD-8002": ("Human approval gate carries executable work", "Remove change_scope.allowed_paths and implementation steps from the gate; put the work in the subject task. A gate is never executed by a performer.", True),
+    "MACC-PRD-8003": ("Approver role not traceable to the governance source", "Use the role names the cited governance source defines, or cite the source that defines them. Never invent approver roles.", True),
+    "MACC-PRD-8004": ("Human approval gate lacks a governance source", "Cite the specification governance source that defines the approver roles in gate.governance_ref, or escalate: roles must be derived, not assumed.", True),
+    "MACC-PRD-8005": ("Human approval gate lacks a valid trigger", "Set gate.approval_trigger to one of the allowed triggers, or remove the gate: approval is added only when a trigger applies.", True),
+    "MACC-PRD-8006": ("Approval-sensitive task is not behind a human gate", "If this task implements a decision that needs human approval, add a human_approval gate on the decision and make this task depend on it; otherwise record why none is needed in notes.", False),
 }
+
+# A human approval gate is justified only by one of these triggers.
+APPROVAL_TRIGGERS = {
+    "normative-change",
+    "adr",
+    "open-product-decision",
+    "sensitive-architecture",
+    "sensitive-data-model",
+    "security",
+    "identity",
+    "payment",
+    "privacy",
+    "irreversible-migration",
+    "production-activation",
+    "gate-crossing",
+}
+GOVERNANCE_NAME = re.compile(r"(codeowners|governance|gouvernance|raci|roles?[-_]?permissions|decisions?|adr|approv|ownership|responsab)", re.I)
+ROLE_TOKEN = re.compile(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b")
+ROLE_HINT = re.compile(r"(OWNER|LEAD|ARCHITECT|OFFICER|MANAGER|REVIEWER|APPROVER|ADMIN|DPO|CISO|CTO|SPONSOR|STEWARD|RESPONSIBLE)")
 
 
 def emit(value: Any) -> None:
@@ -148,6 +174,90 @@ def hotspot_paths(root: Path) -> list[str]:
     return hotspots[:100]
 
 
+APPROVAL_HEADING = re.compile(r"^#{1,6}\s.*(approb|approv|raci|decision rights|droits de d[ée]cision|who decides|qui d[ée]cide|signataires?)", re.I)
+
+
+def fold(value: str) -> str:
+    """Lower-case and strip accents so 'Responsable sécurité' matches
+    RESPONSABLE_SECURITE."""
+    return "".join(c for c in unicodedata.normalize("NFKD", value) if not unicodedata.combining(c)).lower()
+
+
+def approval_rules(content: str) -> list[dict[str, str]]:
+    """Rows of approval matrices: markdown tables under a heading about
+    approval, RACI, or decision rights. Each row maps a domain to the approvers
+    the governance source requires for it."""
+    rules: list[dict[str, str]] = []
+    in_section = False
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            in_section = bool(APPROVAL_HEADING.match(stripped))
+            continue
+        if not in_section or not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if all(set(cell) <= set("-: ") for cell in cells):
+            # Separator row: the row just before it was the table header.
+            if rules:
+                rules.pop()
+            continue
+        if len(cells) < 2:
+            continue
+        rules.append({"domain": cells[0], "approvers": cells[1]})
+    return rules[:40]
+
+
+def governance_sources(root: Path) -> list[dict[str, Any]]:
+    """Files that define who decides: CODEOWNERS, governance/RACI docs, decision
+    logs and ADR records. For each: role-like UPPER_SNAKE tokens or CODEOWNERS
+    owners (`role_candidates`) and approval-matrix rows (`approval_rules`).
+    The planner derives approver roles from these, never from assumptions.
+
+    Application RBAC roles (end-user permissions) may appear here too; they are
+    not approval roles unless the source says they approve decisions."""
+    found: list[dict[str, Any]] = []
+    for path in files(root):
+        name = path.name
+        relative = rel(root, path)
+        # MACC's own state, logs, and worktree copies are not governance.
+        if relative.split("/", 1)[0] == ".macc":
+            continue
+        is_codeowners = name == "CODEOWNERS"
+        if not is_codeowners and not (path.suffix.lower() in {".md", ".mdx", ".txt", ".yaml", ".yml", ".json"} and GOVERNANCE_NAME.search(relative)):
+            continue
+        try:
+            content = text(path)
+        except OSError:
+            continue
+        if is_codeowners:
+            owners = sorted({token for token in re.findall(r"@[\w./-]+", content)})
+            found.append({"path": relative, "kind": "codeowners", "role_candidates": owners[:50]})
+            continue
+        roles = sorted({token for token in ROLE_TOKEN.findall(content) if ROLE_HINT.search(token)})
+        rules = approval_rules(content)
+        kind = "approval-matrix" if rules else ("adr" if re.search(r"(^|/)(adr|decisions?)(/|[-_.])", relative, re.I) else "governance")
+        if roles or rules or kind == "governance":
+            entry: dict[str, Any] = {"path": relative, "kind": kind, "role_candidates": roles[:50]}
+            if rules:
+                entry["approval_rules"] = rules
+            found.append(entry)
+    order = {"approval-matrix": 0, "codeowners": 1, "governance": 2, "adr": 3}
+    return sorted(found, key=lambda item: (order.get(item["kind"], 9), item["path"]))[:60]
+
+
+def role_is_traceable(role: str, governance_text: str) -> bool:
+    """A role is traceable when the governance source names it, verbatim or in
+    its prose form, ignoring case and accents
+    (PRODUCT_OWNER ~ "Product Owner"; RESPONSABLE_SECURITE ~ "Responsable sécurité")."""
+    folded = fold(governance_text)
+    role_folded = fold(role)
+    if role.startswith("@"):
+        return role_folded in folded
+    candidates = {role_folded, role_folded.replace("_", " "), role_folded.replace("_", "-")}
+    return any(candidate in folded for candidate in candidates)
+
+
 def inspect(root: Path) -> dict[str, Any]:
     schema = find_named(root, "prd.json.example")
     existing = find_named(root, "prd.json")
@@ -164,6 +274,7 @@ def inspect(root: Path) -> dict[str, Any]:
         "documentation_paths": docs,
         "test_paths": tests,
         "operational_paths": operational,
+        "governance_sources": governance_sources(root),
         "protected_paths": [],
         "warnings": [] if schema else ["prd.json.example was not found; use the repository schema when available."],
         "blocking_issues": [],
@@ -385,6 +496,7 @@ def validate(root: Path, file_name: str, profile: str | None, previous_name: str
             validate_ui_task(root, task, diagnostics)
     validate_collisions(tasks, graph, diagnostics)
     validate_lot_responsibilities(data, tasks, diagnostics)
+    validate_approval_gates(root, tasks, graph, diagnostics)
     if previous_name:
         previous = load_json_or_none(root / previous_name)
         if isinstance(previous, dict):
@@ -461,6 +573,93 @@ def validate_lot_responsibilities(data: dict[str, Any], tasks: list[Any], diagno
         diagnostics.append(diagnostic("MACC-PRD-4002"))
     if not any(re.search(r"\b(test|verification|validate|regression|qa)\b", value) for value in text_values) and not any(word in assumption_text for word in ("test", "verification")):
         diagnostics.append(diagnostic("MACC-PRD-4003"))
+
+
+def is_human_gate(task: Any) -> bool:
+    return isinstance(task, dict) and isinstance(task.get("gate"), dict) and task["gate"].get("kind") == "human_approval"
+
+
+SENSITIVE_TEXT = re.compile(
+    r"\b(adr|migration|migrate|production|go[- ]live|rollout|payment|billing|privacy|gdpr|rgpd|personal data|identity|mfa|authentication|authorization|encryption|secret|security)\b",
+    re.I,
+)
+
+
+def validate_approval_gates(root: Path, tasks: list[Any], graph: dict[str, list[str]], diagnostics: list[dict[str, Any]]) -> None:
+    gates = {task["id"] for task in tasks if is_human_gate(task) and isinstance(task.get("id"), str)}
+    for task in tasks:
+        if not is_human_gate(task):
+            continue
+        task_id = task.get("id")
+        gate = task["gate"]
+        deps = task.get("dependencies", []) if isinstance(task.get("dependencies"), list) else []
+        problems = []
+        subject = gate.get("subject_task")
+        if not isinstance(subject, str) or not subject.strip():
+            problems.append("gate.subject_task is required")
+        elif subject not in deps:
+            problems.append(f"gate.subject_task {subject!r} must also be listed in dependencies")
+        approvers = gate.get("required_approvers")
+        if not isinstance(approvers, list) or not approvers:
+            problems.append("gate.required_approvers must name at least one role")
+            approvers = []
+        total = 0
+        for approver in approvers:
+            role = approver.get("role") if isinstance(approver, dict) else None
+            count = approver.get("count", 1) if isinstance(approver, dict) else 0
+            if not isinstance(role, str) or not role.strip():
+                problems.append("a required approver has no role")
+            if not isinstance(count, int) or count < 1:
+                problems.append(f"required approver {role!r} needs count >= 1")
+            else:
+                total += count
+        quorum = gate.get("quorum", "all")
+        if not (quorum in ("all", "any") or (isinstance(quorum, int) and not isinstance(quorum, bool) and 1 <= quorum <= max(total, 1))):
+            problems.append(f"gate.quorum {quorum!r} must be 'all', 'any' or 1..{max(total, 1)}")
+        if gate.get("bind_to", "commit_sha") != "commit_sha":
+            problems.append("gate.bind_to must be commit_sha")
+        if gate.get("required_verdict") not in (None, "accepted"):
+            problems.append("human_approval gates do not use required_verdict")
+        for problem in problems:
+            diagnostics.append(diagnostic("MACC-PRD-8001", task_id, problem))
+
+        scope = task.get("change_scope") if isinstance(task.get("change_scope"), dict) else {}
+        if scope.get("allowed_paths"):
+            diagnostics.append(diagnostic("MACC-PRD-8002", task_id, "change_scope.allowed_paths must be empty for a human approval gate."))
+
+        trigger = gate.get("approval_trigger")
+        if trigger not in APPROVAL_TRIGGERS:
+            diagnostics.append(diagnostic("MACC-PRD-8005", task_id, f"approval_trigger {trigger!r} is not one of: {', '.join(sorted(APPROVAL_TRIGGERS))}."))
+
+        governance = gate.get("governance_ref")
+        if not isinstance(governance, str) or not governance.strip():
+            diagnostics.append(diagnostic("MACC-PRD-8004", task_id))
+            continue
+        governance_path = root / governance.split("#", 1)[0]
+        if not governance_path.is_file():
+            diagnostics.append(diagnostic("MACC-PRD-8004", task_id, f"governance_ref {governance!r} does not exist."))
+            continue
+        governance_text = text(governance_path)
+        for approver in approvers:
+            role = approver.get("role") if isinstance(approver, dict) else None
+            if isinstance(role, str) and role.strip() and not role_is_traceable(role, governance_text):
+                diagnostics.append(diagnostic("MACC-PRD-8003", task_id, f"Role {role!r} does not appear in {governance!r}."))
+
+    # Advisory: high-risk, approval-sensitive work that no human gate precedes.
+    for task in tasks:
+        if not isinstance(task, dict) or is_human_gate(task) or not isinstance(task.get("id"), str):
+            continue
+        hints = task.get("routing_hints") if isinstance(task.get("routing_hints"), dict) else {}
+        if hints.get("risk_level") != "high":
+            continue
+        blob = " ".join(str(task.get(key, "")) for key in ("title", "category", "description", "objective"))
+        if not SENSITIVE_TEXT.search(blob):
+            continue
+        if any(is_dependent(task["id"], gate_id, graph) for gate_id in gates):
+            continue
+        if "no approval" in str(task.get("notes", "")).lower():
+            continue
+        diagnostics.append(diagnostic("MACC-PRD-8006", task["id"]))
 
 
 def validation_output(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:

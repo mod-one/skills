@@ -1,0 +1,37 @@
+{
+  "id": "LOT-APP-001",
+  "title": "Approve <decision>",
+  "category": "approval",
+  "description": "Problem/Goal: <decision> needs a recorded human decision before dependent work starts.\nKey actions: none for an agent; approvers review the subject revision and decide with `macc coordinator approve|reject|request-changes`.\nOut of scope: any implementation; the subject task produces the proposal.\nSuccess criteria: the quorum is recorded for the current subject revision.",
+  "objective": "Obtain the required human approval of <subject>.",
+  "result": "An approval bound to the subject's commit, with evidence, recorded in the coordinator ledger.",
+  "steps": [],
+  "exclusive_resources": [],
+  "dependencies": ["LOT-ADR-001"],
+  "priority": "1",
+  "scope_ref": "feature-or-foundation-id",
+  "planning_profile": "general",
+  "routing_hints": {
+    "execution_mode": "micro",
+    "reasoning_depth": "light",
+    "context_scope": "local",
+    "risk_level": "high",
+    "validation_profile": "light"
+  },
+  "change_scope": {"allowed_paths": [], "read_only_paths": [], "forbidden_paths": []},
+  "gate": {
+    "kind": "human_approval",
+    "subject_task": "LOT-ADR-001",
+    "description": "Adopt <decision>",
+    "approval_trigger": "adr",
+    "governance_ref": "docs/<governance-source>.md",
+    "required_approvers": [{"role": "<ROLE_FROM_GOVERNANCE>", "count": 1}],
+    "quorum": "all",
+    "bind_to": "commit_sha",
+    "evidence_type": "pull_request_review",
+    "invalidate_on_subject_change": true,
+    "risks": ["<what goes wrong if this is approved in error>"]
+  },
+  "acceptance_criteria": ["The required approvers recorded an approval of the current subject revision."],
+  "notes": ""
+}

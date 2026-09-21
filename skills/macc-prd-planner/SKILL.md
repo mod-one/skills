@@ -34,7 +34,7 @@ Do not select provider-specific models. `routing_hints` remain abstract and runt
 
    Create a `reference_coverage` map from each screen/component area to its authoritative sources. The generated context inventories facts; the planner supplies this semantic mapping.
 
-5. Define coherent task boundaries, dependencies, `exclusive_resources`, and change boundaries. Every task must serve the file-level `prd_scope`; move unrelated feature work to a separate PRD.
+5. Define coherent task boundaries, dependencies, `exclusive_resources`, and change boundaries. Every task must serve the file-level `prd_scope`; move unrelated feature work to a separate PRD. Where a decision needs people, add a human approval gate as described in [Human approval gates](#human-approval-gates), deriving its approvers from the `governance_sources` reported by `inspect`.
 6. Generate or update `prd.json`, preserving existing task IDs when their responsibility has not changed.
 7. Validate, repair only the reported defect, and validate again. Make at most two automatic repair passes:
 
@@ -142,6 +142,43 @@ The resulting contract is enforced after planning:
 
 MACC Web/TUI editors should expose profile-aware forms, discovered sources, source authority, contracts, diagnostics, evidence, and review findings. A future MCP server may expose the same repository context, inspectors, schema, validators, and diagnostics, but it must delegate to the shared MACC PRD core rather than duplicate policy. MCP is optional and must not replace this semantic planning workflow.
 
+## Human approval gates
+
+Some decisions only people may take. Represent each one as its own task with `gate.kind: human_approval`. The coordinator never dispatches that task to a performer: it waits in `waiting_approval`, uses no worker, is never retried, and releases its dependants only when the required approvers record a decision bound to the subject's commit. Follow [approval-gate-policy.md](references/approval-gate-policy.md); start from [human-approval-gate-task.json](templates/human-approval-gate-task.json); the field contract is [human-approval-gate.schema.json](schemas/human-approval-gate.schema.json).
+
+```json
+{
+  "id": "SEC-APP-003",
+  "title": "Approve the recovery-code persistence model",
+  "dependencies": ["SEC-ADR-003"],
+  "change_scope": {"allowed_paths": []},
+  "gate": {
+    "kind": "human_approval",
+    "subject_task": "SEC-ADR-003",
+    "description": "Adopt ADR-003 recovery-code persistence model",
+    "approval_trigger": "sensitive-data-model",
+    "governance_ref": "docs/16-decisions.md",
+    "required_approvers": [
+      {"role": "PRODUCT_OWNER", "count": 1},
+      {"role": "SECURITY_OWNER", "count": 1}
+    ],
+    "quorum": "all",
+    "bind_to": "commit_sha",
+    "evidence_type": "pull_request_review",
+    "invalidate_on_subject_change": true,
+    "risks": ["Irreversible migration of identity.mfa_factor"]
+  }
+}
+```
+
+Create a gate **only when** the subject task makes one of these decisions, and name it in `approval_trigger`: a normative change or ADR; an open product decision; a sensitive architecture or data model; security, identity, payment, or privacy; an irreversible migration; a production activation or release-gate crossing. Do not gate routine implementation, tests, refactors, documentation, or anything the specification already settles.
+
+**Derive approver roles from the specification governance; never invent them.** Read `governance_sources` from `inspect` (CODEOWNERS, governance/RACI, roles-and-permissions, decision logs, ADRs), prefer an approval matrix whose `approval_rules` map the subject's domain to its approvers, cite that source in `governance_ref`, and copy its role names exactly (prose names become UPPER_SNAKE, e.g. "Responsable sécurité" → `RESPONSABLE_SECURITE`). Application RBAC roles are not approvers unless the source says so. Do not default to "Product Owner + architect". If no source defines who approves, stop and report the gap.
+
+Shape the graph as proposal → executable subject task that drafts the artefact → gate → dependent work. The subject is listed in the gate's `dependencies` and named in `subject_task`; downstream work depends on the gate. The gate has no `allowed_paths` and no implementation steps. Keep `bind_to: commit_sha` and `invalidate_on_subject_change: true` so a revised subject re-opens the approval.
+
+A gate is not a failure: `precondition_unmet` is for a task that cannot run. Never plan a performer step that produces, simulates, or records an approval; only people record approvals, with `macc coordinator approve`. A `gate` without `kind` remains a verdict gate evaluated by the task's tool.
+
 ## Task authoring
 
 At the file level, prefer this scope contract:
@@ -195,7 +232,8 @@ Before delivery, confirm:
 - For UI-sensitive tasks: sources are inspected and exist; authority/precedence, fidelity mode, design-system role, scope boundaries, states/viewports, adaptations, observable criteria, and evidence are complete.
 - `consumer` tasks do not authorize design-system writes; required sources are immutable; required-source conflicts are resolved.
 - Exact tasks preserve the authoritative reference rather than reinterpreting it.
+- Every human approval gate has a valid `approval_trigger`, a subject listed in its dependencies, no executable scope, a `governance_ref` that exists, and approver roles that appear in that source; dependent work depends on the gate, not on the subject. No gate exists without a trigger.
 
 ## Escalate instead of improvising
 
-Stop and report when the requested PRD mixes multiple features; a shared-foundation PRD starts delivering a downstream feature; the repository schema conflicts with the requested PRD; IDs would be misleadingly repurposed; a material architecture decision is hidden in an ordinary task; a required source is unavailable or conflicts with another required source; exact work lacks material interaction/responsive behavior; a consumer task requires a system change; no authoritative source or reusable pattern exists for strict fidelity; the schema cannot represent or compatibly encode a required contract; or blocking validation diagnostics remain after two repair passes.
+Stop and report when the requested PRD mixes multiple features; a shared-foundation PRD starts delivering a downstream feature; the repository schema conflicts with the requested PRD; IDs would be misleadingly repurposed; a material architecture decision is hidden in an ordinary task; a required source is unavailable or conflicts with another required source; exact work lacks material interaction/responsive behavior; a consumer task requires a system change; no authoritative source or reusable pattern exists for strict fidelity; the schema cannot represent or compatibly encode a required contract; a decision needs human approval but no governance source defines who approves it; or blocking validation diagnostics remain after two repair passes.

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MACC human approval gate",
+  "description": "The `gate` object of a task that only people may decide. The MACC coordinator never dispatches such a task to a performer; it waits in `waiting_approval` until the quorum is recorded with `macc coordinator approve`.",
+  "type": "object",
+  "required": ["kind", "subject_task", "required_approvers", "approval_trigger", "governance_ref"],
+  "properties": {
+    "kind": {"const": "human_approval"},
+    "subject_task": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Task whose delivered revision is approved. Must also be listed in the gate task's dependencies."
+    },
+    "description": {"type": "string", "description": "The decision being approved, in one sentence."},
+    "approval_trigger": {
+      "enum": [
+        "normative-change",
+        "adr",
+        "open-product-decision",
+        "sensitive-architecture",
+        "sensitive-data-model",
+        "security",
+        "identity",
+        "payment",
+        "privacy",
+        "irreversible-migration",
+        "production-activation",
+        "gate-crossing"
+      ],
+      "description": "Why people must decide. A gate without a trigger must not exist."
+    },
+    "governance_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repository path (optionally #anchor) of the specification governance source that defines the approver roles."
+    },
+    "required_approvers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1, "description": "Role name exactly as the governance source defines it."},
+          "count": {"type": "integer", "minimum": 1, "default": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "quorum": {
+      "oneOf": [{"enum": ["all", "any"]}, {"type": "integer", "minimum": 1}],
+      "default": "all"
+    },
+    "bind_to": {"const": "commit_sha", "default": "commit_sha"},
+    "evidence_type": {
+      "enum": ["pull_request_review", "merge_request_approval", "adr", "changelog", "manual"],
+      "description": "Where the durable human proof lives. Any value except manual makes --evidence mandatory on approval."
+    },
+    "invalidate_on_subject_change": {"type": "boolean", "default": true},
+    "expires_after_days": {"type": "integer", "minimum": 1},
+    "risks": {"type": "array", "items": {"type": "string", "minLength": 1}, "description": "Risks the approvers must weigh."}
+  },
+  "additionalProperties": false
+}
